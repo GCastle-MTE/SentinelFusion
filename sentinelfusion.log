@@ -1,0 +1,143 @@
+2026-07-13 08:56:38 [INFO] system/app: SentinelFusion monitoring started
+2026-07-13 08:56:41 [INFO] intel/threat_intel: loaded 26721 IPs + 1681 ranges from 4 feeds
+2026-07-13 09:00:09 [INFO] system/app: SentinelFusion monitoring started
+2026-07-13 09:09:04 [INFO] system/app: SentinelFusion monitoring started
+2026-07-14 08:37:18 [INFO] system/app: SentinelFusion monitoring started
+2026-07-15 21:45:46 [INFO] system/app: SentinelFusion monitoring started
+2026-07-15 21:45:50 [INFO] intel/threat_intel: loaded 25441 IPs + 1678 ranges from 4 feeds
+2026-07-15 21:46:02 [WARNING] device/192.168.1.253: New device appeared on the network (192.168.1.253)
+2026-07-15 21:46:06 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-15 21:46:06 [WARNING] device/192.168.1.9: New device appeared on the network (192.168.1.9)
+2026-07-15 21:46:17 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-15 21:46:23 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-15 21:46:23 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-15 21:46:24 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-15 21:46:26 [WARNING] device/192.168.1.1: New device appeared on the network (192.168.1.1)
+2026-07-15 21:46:35 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-15 21:48:37 [WARNING] device/100.65.74.62: New device appeared on the network (100.65.74.62)
+2026-07-15 21:49:56 [WARNING] device/192.168.1.231: New device appeared on the network (192.168.1.231)
+2026-07-15 21:56:34 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-15 22:01:01 [WARNING] device/192.168.1.226: New device appeared on the network (192.168.1.226)
+2026-07-15 22:07:16 [WARNING] device/0.0.0.0: New device appeared on the network (0.0.0.0)
+2026-07-15 22:29:53 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-15 22:34:15 [INFO] system/app: SentinelFusion monitoring started
+2026-07-15 22:35:04 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-15 22:35:08 [WARNING] device/192.168.1.9: New device appeared on the network (192.168.1.9)
+2026-07-15 22:35:27 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-15 22:35:27 [WARNING] device/192.168.1.253: New device appeared on the network (192.168.1.253)
+2026-07-15 22:35:45 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-15 22:39:04 [WARNING] device/192.168.1.226: New device appeared on the network (192.168.1.226)
+2026-07-15 22:39:38 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-15 22:39:39 [INFO] intel/threat_intel: loaded 25480 IPs + 1678 ranges from 4 feeds
+2026-07-15 22:43:32 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-15 22:51:10 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-15 23:06:15 [INFO] system/app: SentinelFusion monitoring started
+2026-07-15 23:06:35 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-15 23:06:35 [WARNING] device/192.168.1.253: New device appeared on the network (192.168.1.253)
+2026-07-15 23:07:23 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-15 23:07:23 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-15 23:07:32 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-15 23:07:32 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-15 23:07:45 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-15 23:08:35 [WARNING] device/192.168.1.9: New device appeared on the network (192.168.1.9)
+2026-07-15 23:13:33 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-15 23:14:19 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-19 18:10:05 [INFO] system/app: SentinelFusion monitoring started
+2026-07-19 18:10:08 [INFO] intel/threat_intel: loaded 23674 IPs + 1678 ranges from 4 feeds
+2026-07-19 18:10:42 [WARNING] device/192.168.1.1: New device appeared on the network (192.168.1.1)
+2026-07-19 18:10:46 [WARNING] device/192.168.1.88: New device appeared on the network (192.168.1.88)
+2026-07-19 18:10:52 [WARNING] device/192.168.1.31: New device appeared on the network (192.168.1.31)
+2026-07-19 18:11:07 [WARNING] device/192.168.1.55: New device appeared on the network (192.168.1.55)
+2026-07-19 18:12:03 [WARNING] device/192.168.1.203: New device appeared on the network (192.168.1.203)
+2026-07-19 18:12:03 [WARNING] device/192.168.1.124: New device appeared on the network (192.168.1.124)
+2026-07-19 18:12:36 [WARNING] device/192.168.1.84: New device appeared on the network (192.168.1.84)
+2026-07-19 18:22:27 [WARNING] device/192.168.1.91: New device appeared on the network (192.168.1.91)
+2026-07-19 18:28:35 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-20 08:51:26 [WARNING] protocol/204.79.197.203: 204.79.197.203: Traffic on port 80 has no recognisable protocol and 7.3 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-21 08:39:06 [WARNING] device/172.20.10.1: New device appeared on the network (172.20.10.1)
+2026-07-21 08:39:06 [ALERT] rogue/172.20.10.1: Unexpected DHCP server 172.20.10.1 (46:a1:0e:d7:07:64) is answering OFFERs; expected 192.168.1.1. It advertises gateway 172.20.10.1, DNS 172.20.10.1. A rogue DHCP server can redirect your traffic through it.
+2026-07-21 08:39:06 [WARNING] device/172.20.10.6: New device appeared on the network (172.20.10.6)
+2026-07-21 10:25:26 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 10:25:31 [INFO] intel/threat_intel: loaded 26695 IPs + 1669 ranges from 4 feeds
+2026-07-21 10:26:42 [WARNING] device/172.20.10.1: New device appeared on the network (172.20.10.1)
+2026-07-21 14:31:35 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 14:31:48 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 14:31:53 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-21 14:31:58 [WARNING] device/192.168.1.226: New device appeared on the network (192.168.1.226)
+2026-07-21 14:32:25 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-21 14:32:25 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-21 14:32:33 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-21 14:32:54 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-21 14:32:56 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-21 14:33:46 [WARNING] device/192.168.1.10: New device appeared on the network (192.168.1.10)
+2026-07-21 14:44:20 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 14:44:33 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-21 14:45:06 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-21 14:45:06 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-21 14:45:16 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-21 14:46:24 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-21 14:46:46 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-21 14:47:20 [WARNING] device/192.168.1.226: New device appeared on the network (192.168.1.226)
+2026-07-21 14:53:41 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-21 14:54:05 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-21 14:55:00 [WARNING] device/192.168.1.10: New device appeared on the network (192.168.1.10)
+2026-07-21 15:09:03 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 15:09:12 [WARNING] device/192.168.1.225: New device appeared on the network (192.168.1.225)
+2026-07-21 15:09:49 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-21 15:10:10 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-21 15:10:10 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-21 15:10:14 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-21 15:10:26 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-21 15:11:26 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-21 15:15:17 [WARNING] device/192.168.1.4: New device appeared on the network (192.168.1.4)
+2026-07-21 15:15:42 [WARNING] device/192.168.1.10: New device appeared on the network (192.168.1.10)
+2026-07-21 15:16:39 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-21 15:28:02 [WARNING] device/192.168.1.226: New device appeared on the network (192.168.1.226)
+2026-07-21 15:28:19 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-21 16:40:01 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-21 17:16:54 [WARNING] device/192.168.1.237: New device appeared on the network (192.168.1.237)
+2026-07-21 17:29:56 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 17:29:58 [INFO] intel/threat_intel: loaded 26474 IPs + 1669 ranges from 4 feeds
+2026-07-21 17:30:15 [WARNING] device/192.168.1.1: New device appeared on the network (192.168.1.1)
+2026-07-21 17:30:27 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-21 17:30:34 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-21 17:30:44 [WARNING] device/192.168.1.10: New device appeared on the network (192.168.1.10)
+2026-07-21 17:31:19 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-21 17:31:43 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-21 17:37:07 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-21 17:53:58 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 17:54:26 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-21 17:54:27 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-21 17:55:24 [WARNING] device/192.168.1.10: New device appeared on the network (192.168.1.10)
+2026-07-21 17:55:47 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-21 17:57:58 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-21 18:01:43 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-21 18:30:53 [WARNING] device/192.168.1.4: New device appeared on the network (192.168.1.4)
+2026-07-21 18:31:35 [WARNING] device/192.168.1.237: New device appeared on the network (192.168.1.237)
+2026-07-21 19:11:42 [WARNING] device/192.168.1.253: New device appeared on the network (192.168.1.253)
+2026-07-21 19:13:36 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-21 19:25:05 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 19:25:21 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-21 19:25:24 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-21 19:25:24 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-21 19:25:36 [WARNING] device/192.168.1.1: New device appeared on the network (192.168.1.1)
+2026-07-21 19:26:27 [WARNING] device/192.168.1.6: New device appeared on the network (192.168.1.6)
+2026-07-21 19:26:39 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-21 19:35:18 [INFO] system/app: SentinelFusion monitoring started
+2026-07-21 19:35:41 [WARNING] device/192.168.1.244: New device appeared on the network (192.168.1.244)
+2026-07-21 19:35:47 [WARNING] device/192.168.1.1: New device appeared on the network (192.168.1.1)
+2026-07-21 19:36:00 [WARNING] device/192.168.1.5: New device appeared on the network (192.168.1.5)
+2026-07-21 19:36:00 [WARNING] device/169.254.5.181: New device appeared on the network (169.254.5.181)
+2026-07-21 19:36:12 [WARNING] device/192.168.1.4: New device appeared on the network (192.168.1.4)
+2026-07-21 19:36:20 [WARNING] device/192.168.1.247: New device appeared on the network (192.168.1.247)
+2026-07-21 19:36:44 [WARNING] device/192.168.1.2: New device appeared on the network (192.168.1.2)
+2026-07-21 19:36:47 [WARNING] device/192.168.1.10: New device appeared on the network (192.168.1.10)
+2026-07-21 19:43:27 [INFO] soar/forensics: Evidence bundle built for 192.168.1.1 (4 artifacts)
+2026-07-21 19:43:56 [INFO] soar/forensics: Evidence bundle built for 192.168.1.1 (4 artifacts)
+2026-07-21 19:45:33 [INFO] system/import: Imported capture.pcap: reviewing 2763 packets offline
+2026-07-21 19:45:33 [ALERT] flood/192.168.1.1: Possible SYN flood: 200 SYNs to 192.168.1.1:49152 in <= 10s
+2026-07-21 19:46:46 [WARNING] device/169.254.9.123: New device appeared on the network (169.254.9.123)
+2026-07-21 19:48:20 [WARNING] device/192.168.1.253: New device appeared on the network (192.168.1.253)
+2026-07-21 19:50:20 [WARNING] device/192.168.1.241: New device appeared on the network (192.168.1.241)
+2026-07-21 19:53:39 [WARNING] device/192.168.1.229: New device appeared on the network (192.168.1.229)
+2026-07-21 20:02:20 [WARNING] device/192.168.1.237: New device appeared on the network (192.168.1.237)

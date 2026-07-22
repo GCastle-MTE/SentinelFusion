@@ -1,0 +1,16 @@
+{
+  "wigle_token": "QUlENzBlZGZiZGQ0ZjNjMzhiNTEyNTlhNWYzYmY1MmIyNjA6MDViZjk5ZGVkMDVhNWFlNGRmY2UxODJkZWU3MzJlOTk=",
+  "port_scan_threshold": 25,
+  "ping_sweep_hosts": 15,
+  "syn_flood_count": 200,
+  "exfil_mb": 100,
+  "beacon_min_intervals": 6,
+  "intel_refresh_hours": 6,
+  "geoip_dir": "",
+  "ja3_file": "",
+  "capture_iface": "Wi-Fi",
+  "proxy_enabled": 0,
+  "notify_enabled": 1,
+  "notify_warnings": 0,
+  "proxy_url": "socks5h://127.0.0.1:9050"
+}

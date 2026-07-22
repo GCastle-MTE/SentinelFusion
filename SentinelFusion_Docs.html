@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SentinelFusion — Operator's Reference</title>
+<style>
+  /* --- SOC / enterprise theme, matched to the application --- */
+  :root{
+    --bg:#0f141a; --panel:#171e26; --head:#0b1015; --fg:#d4dae0; --muted:#7c8a96;
+    --accent:#5b9dd9; --glow:#7fb8e6; --gold:#d9a441; --sel:#1d3245; --border:#28323d;
+    --red:#e8544e; --amber:#e0993a; --green:#4fb477; --headfg:#e8edf1;
+    --btn:#202a34; --btn-border:#3a4652;
+    --ui:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    --mono:"Consolas","SF Mono",ui-monospace,"Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:var(--ui); font-size:15px; line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent); text-decoration:none}
+  a:hover{color:var(--glow); text-decoration:underline}
+
+  /* Top chrome bar — mirrors the app's header */
+  header.top{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:baseline; gap:14px;
+    background:var(--head); border-bottom:1px solid var(--border);
+    padding:13px 26px;
+  }
+  header.top .mark{ font-weight:600; font-size:17px; color:var(--headfg); letter-spacing:.2px }
+  header.top .sub{ color:var(--muted); font-size:12px }
+  header.top .ver{ margin-left:auto; color:var(--muted); font-size:11px;
+    font-family:var(--mono); border:1px solid var(--border); border-radius:5px; padding:3px 9px }
+
+  /* Layout: sticky sidebar + content */
+  .wrap{ display:grid; grid-template-columns:250px 1fr; gap:0; max-width:1180px; margin:0 auto }
+  nav.side{
+    position:sticky; top:53px; align-self:start; height:calc(100vh - 53px);
+    overflow-y:auto; padding:22px 16px 60px; border-right:1px solid var(--border);
+  }
+  nav.side .eyebrow{
+    font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+    margin:20px 8px 7px; font-weight:600;
+  }
+  nav.side .eyebrow:first-child{ margin-top:0 }
+  nav.side a{
+    display:block; color:var(--fg); padding:5px 10px; border-radius:6px;
+    font-size:13.5px; border-left:2px solid transparent;
+  }
+  nav.side a:hover{ background:var(--panel); text-decoration:none; color:var(--glow) }
+  nav.side a.active{ border-left-color:var(--accent); color:var(--accent); background:var(--panel) }
+
+  main{ padding:34px 46px 120px; min-width:0 }
+
+  section{ padding-top:26px; margin-top:26px; border-top:1px solid var(--border) }
+  section:first-child{ border-top:0; margin-top:0; padding-top:8px }
+  h2{
+    font-size:24px; font-weight:600; color:var(--headfg); margin:0 0 4px;
+    letter-spacing:-.01em;
+  }
+  h2 .num{ font-family:var(--mono); font-size:14px; color:var(--accent); margin-right:12px;
+    font-weight:400; vertical-align:2px }
+  h3{ font-size:16px; color:var(--glow); margin:26px 0 8px; font-weight:600 }
+  h4{ font-size:14px; color:var(--headfg); margin:0 0 6px; font-weight:600 }
+  p{ margin:10px 0 }
+  p.lead{ font-size:16px; color:var(--fg) }
+  .muted{ color:var(--muted) }
+
+  /* Cards */
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:15px 17px; margin:12px 0;
+  }
+  .card h4{ margin-bottom:5px }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; margin:14px 0 }
+  .grid .card{ margin:0 }
+
+  /* Module reference cards use the mono face for the filename */
+  .fn{ font-family:var(--mono); color:var(--accent); font-size:13px }
+
+  ul.tight{ margin:8px 0; padding-left:20px }
+  ul.tight li{ margin:4px 0 }
+
+  pre{
+    background:var(--head); border:1px solid var(--border); border-radius:8px;
+    padding:14px 16px; overflow-x:auto; font-family:var(--mono); font-size:13px;
+    color:var(--glow); line-height:1.5;
+  }
+  code{ font-family:var(--mono); font-size:.9em; color:var(--glow);
+    background:var(--head); padding:1px 5px; border-radius:4px }
+
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:11px; color:var(--muted);
+    border:1px solid var(--border); border-radius:5px; padding:2px 8px; margin-right:5px;
+  }
+  .cat{ font-family:var(--mono); font-size:12.5px; color:var(--accent) }
+
+  table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px }
+  th,td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--border);
+    vertical-align:top }
+  th{ color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase;
+    letter-spacing:.03em }
+  td.cat{ white-space:nowrap }
+  .sev-alert{ color:var(--red); font-family:var(--mono); font-size:12px }
+  .sev-warn{ color:var(--amber); font-family:var(--mono); font-size:12px }
+  .sev-info{ color:var(--muted); font-family:var(--mono); font-size:12px }
+
+  .note{
+    background:rgba(91,157,217,.08); border:1px solid var(--border);
+    border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+    padding:12px 15px; margin:14px 0; font-size:14px;
+  }
+  .warn{
+    background:rgba(232,84,78,.07); border:1px solid var(--border);
+    border-left:3px solid var(--red); border-radius:0 8px 8px 0;
+    padding:12px 15px; margin:14px 0; font-size:14px;
+  }
+
+  /* Signature element: the detection-category status grid */
+  .catgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin:16px 0 }
+  .catchip{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:9px 11px; border-left:3px solid var(--muted);
+  }
+  .catchip.alert{ border-left-color:var(--red) }
+  .catchip.warn{ border-left-color:var(--amber) }
+  .catchip.info{ border-left-color:var(--muted) }
+  .catchip .k{ font-family:var(--mono); font-size:13px; color:var(--fg); font-weight:600 }
+  .catchip .v{ font-size:11px; color:var(--muted); display:block; margin-top:2px }
+
+  /* Kill-chain / ATT&CK flow strip */
+  .flow{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:14px 0 }
+  .flow .stage{
+    font-family:var(--mono); font-size:12px; background:var(--panel);
+    border:1px solid var(--border); border-radius:6px; padding:6px 11px; color:var(--fg);
+  }
+  .flow .arrow{ color:var(--accent); font-family:var(--mono) }
+
+  hr{ border:0; border-top:1px solid var(--border); margin:24px 0 }
+  footer{ color:var(--muted); font-size:12px; padding:24px 46px 60px; border-top:1px solid var(--border) }
+
+  @media (max-width:820px){
+    .wrap{ grid-template-columns:1fr }
+    nav.side{ position:static; height:auto; border-right:0; border-bottom:1px solid var(--border) }
+    main{ padding:24px 20px 80px }
+  }
+  @media (prefers-reduced-motion:reduce){ html{ scroll-behavior:auto } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <span class="mark">SentinelFusion</span>
+  <span class="sub">Operator's reference</span>
+  <span class="ver">defensive network security · threat hunting · OSINT</span>
+</header>
+
+<div class="wrap">
+<nav class="side">
+  <div class="eyebrow">Start here</div>
+  <a href="#overview">Overview &amp; scope</a>
+  <a href="#quickstart">Quick start</a>
+  <a href="#tabs">The interface</a>
+
+  <div class="eyebrow">Investigate</div>
+  <a href="#lan">Surveying your network</a>
+  <a href="#procmap">Process → connection map</a>
+  <a href="#enrich">Enriching an endpoint</a>
+  <a href="#map">Reading the ops map</a>
+  <a href="#tls">TLS certificates</a>
+  <a href="#dpi">Protocol classification</a>
+  <a href="#review">Reviewing a capture</a>
+
+  <div class="eyebrow">Detect &amp; correlate</div>
+  <a href="#detections">Detection categories</a>
+  <a href="#incidents">Incident correlation</a>
+  <a href="#mitre">MITRE ATT&amp;CK mapping</a>
+  <a href="#dns">The DNS log</a>
+  <a href="#http">HTTP transactions</a>
+  <a href="#flows">Session records</a>
+
+  <div class="eyebrow">Respond (SOAR)</div>
+  <a href="#soar">Cases &amp; playbooks</a>
+  <a href="#reporting">Reports</a>
+  <a href="#metrics">SOC metrics</a>
+
+  <div class="eyebrow">Operate</div>
+  <a href="#rules">Detection rules &amp; tuning</a>
+  <a href="#health">Health &amp; self-check</a>
+  <a href="#settings">Settings &amp; config</a>
+
+  <div class="eyebrow">Reference</div>
+  <a href="#features">Key features</a>
+  <a href="#modules">Module reference</a>
+  <a href="#deps">Optional dependencies</a>
+  <a href="#safety">Safety &amp; ethics</a>
+</nav>
+
+<main>
+
+<section id="overview">
+  <h2><span class="num">00</span>Overview &amp; scope</h2>
+  <p class="lead">A defensive network-security, threat-hunting, and OSINT desktop console.</p>
+  <p>SentinelFusion watches the traffic on your own machine and network in real time, attributes
+  it to the processes and remote endpoints responsible, geolocates and enriches those endpoints
+  against public intelligence sources, and raises plain-English alerts when it sees behaviour that
+  matches known attack or exposure patterns. When related alerts add up, it correlates them into
+  scored <strong>incidents</strong>, opens <strong>cases</strong>, and runs investigative
+  <strong>playbooks</strong> automatically. It is built for <strong>monitoring, investigation, and
+  response</strong> — it observes, detects, correlates, and recommends; it is not an attack tool and
+  never executes containment on your behalf.</p>
+  <div class="card">
+    <h4>At a glance</h4>
+    <ul class="tight">
+      <li>Live packet capture with per-process and per-endpoint attribution</li>
+      <li>A detection engine spanning scans, floods, ARP spoofing, DNS tunnelling/DGA, beaconing,
+        data exfiltration, malicious TLS fingerprints, and cleartext credentials</li>
+      <li>Process → connection mapping that classifies what each link is <em>for</em> (game server,
+        voice, matchmaking, anti-cheat, CDN, telemetry)</li>
+      <li>One-click endpoint enrichment: geo, ASN, reputation, DNS history, flows, HTTP, link
+        quality (RTT/jitter), passive OS and JARM fingerprints</li>
+      <li>Incident correlation with MITRE ATT&amp;CK technique mapping</li>
+      <li>A SOAR layer: case management, trigger-based playbooks, and an audit run-log</li>
+      <li>802.11 wireless IDS, proxy-chained OSINT, a live world map, and PCAP import/export</li>
+      <li>Case-based PDF reporting, SOC metrics (MTTA/MTTR, aging, trends), and a sensor health panel</li>
+    </ul>
+  </div>
+  <p><span class="tag">Platform</span> Windows, run as Administrator, with Npcap installed.
+  <span class="tag">Runtime</span> Python 3.10 <span class="tag">GUI</span> Tkinter
+  <span class="tag">Capture</span> scapy</p>
+  <div class="warn"><strong>Defensive use only.</strong> Everything here is for watching networks
+  you own or are authorised to monitor. See <a href="#safety">Safety &amp; ethics</a>.</div>
+</section>
+
+<section id="quickstart">
+  <h2><span class="num">01</span>Quick start</h2>
+  <pre># From the project folder, in an Administrator terminal:
+python app.py</pre>
+  <ul class="tight">
+    <li><strong>Run as Administrator</strong> — packet capture needs it on Windows.</li>
+    <li>On first launch, open <strong>Settings → Capture interface</strong> and pick the adapter you
+      want to watch (Wi-Fi, Ethernet, etc.), or leave it on <em>Automatic</em>.</li>
+    <li>Watch the top status strip and the <strong>Metrics</strong> tab fill in as traffic flows.</li>
+    <li>Anything suspicious lands in <strong>Alerts</strong> with an explanation, flags on the map,
+      and — when related signals accumulate — rolls up into an <strong>Incident</strong> and a
+      <strong>Case</strong>.</li>
+    <li>The <code>?</code> button in the top strip opens an in-app guide to every tab.</li>
+  </ul>
+  <div class="note">To see detectors fire safely, generate traffic against <em>your own</em> devices —
+  e.g. run a port scan from another machine you own, or open a plaintext FTP/HTTP-basic login. Never
+  test against systems you don't control.</div>
+</section>
+<section id="tabs">
+  <h2><span class="num">02</span>The interface</h2>
+  <p>A sticky status strip across the top shows live posture — capture state, endpoint and
+  connection counts, flagged hosts, alert/warning tallies, packet rate, and an overall threat level
+  (Normal / Guarded / Elevated). Everything else lives in sixteen tabs.</p>
+  <div class="grid">
+    <div class="card"><h4>Metrics</h4><p>The dashboard: a live throughput graph (bytes/sec over the last two minutes) plus top-level counters and the connection overview.</p></div>
+    <div class="card"><h4>Applications</h4><p>Traffic grouped by the local process responsible. Select a process and <strong>Map connections</strong> to see every endpoint it talks to, each classified by purpose. See <a href="#procmap">Process → connection map</a>.</p></div>
+    <div class="card"><h4>Active</h4><p>The live external endpoints your machine is currently exchanging packets with.</p></div>
+    <div class="card"><h4>Connections</h4><p>The active flow table — source/destination, ports, protocol, and volume per connection.</p></div>
+    <div class="card"><h4>WiFi</h4><p>802.11 wireless IDS (monitor mode) for deauth floods, rogue APs and evil twins, plus WiGLE OSINT. See <a href="#features">Key features</a>.</p></div>
+    <div class="card"><h4>Network</h4><p>A live inventory of every device on your LAN — IP, MAC, vendor, hostname, device type, passive OS guess, open ports, last seen. See <a href="#lan">Surveying your network</a>.</p></div>
+    <div class="card"><h4>Inspection</h4><p>Deep packet inspection. Decode a packet's anatomy, follow its TCP stream, and import/export PCAP.</p></div>
+    <div class="card"><h4>Alerts</h4><p>Every detection, newest last, colour-coded by severity. Select a row for a plain-English explanation; right-click an IP to enrich, map, or export it.</p></div>
+    <div class="card"><h4>Incidents</h4><p>Related alerts about one actor, grouped and scored, with the ATT&amp;CK techniques they map to. A whole attack chain becomes one incident. See <a href="#incidents">Incident correlation</a>.</p></div>
+    <div class="card"><h4>Cases</h4><p>SOAR case management — work an incident from new → investigating → contained → closed, with a note timeline, recommended actions, and one-click PDF report. See <a href="#soar">Cases &amp; playbooks</a>.</p></div>
+    <div class="card"><h4>DNS</h4><p>Every DNS lookup and what came back. Right-click a resolved IP to inspect it or trace its resolution chain. See <a href="#dns">The DNS log</a>.</p></div>
+    <div class="card"><h4>HTTP</h4><p>Every cleartext HTTP request and response — method, URL, status, content-type, User-Agent. See <a href="#http">HTTP transactions</a>.</p></div>
+    <div class="card"><h4>Flows</h4><p>Every conversation as a session record — who, how long, how much each way, TCP state. See <a href="#flows">Session records</a>.</p></div>
+    <div class="card"><h4>Logs</h4><p>The full event stream with a severity filter, pause, and a <strong>Retro-hunt</strong> search over stored history.</p></div>
+    <div class="card"><h4>Watchlist</h4><p>Rules you define — specific IPs/CIDRs, countries, or ASNs. Any match raises a <span class="cat">watch</span> alert.</p></div>
+    <div class="card"><h4>Settings</h4><p>Everything configurable, plus the operations console — health, detection rules, ATT&amp;CK coverage, and config export/import. See <a href="#settings">Settings</a>.</p></div>
+  </div>
+</section>
+<section id="lan">
+  <h2><span class="num">03</span>Surveying your network</h2>
+  <p class="lead">The Network tab answers "what is actually on my Wi-Fi, and what is it exposing?"</p>
+
+  <h3>How devices are found</h3>
+  <div class="card">
+    <ul class="tight">
+      <li><strong>Active ARP sweep</strong> - "Scan network now" ARPs the whole subnet and lists everything that answers, with its MAC and vendor. A baseline sweep also runs a few seconds after launch.</li>
+      <li><strong>Passive fingerprinting</strong> - devices constantly broadcast <span class="mono">mDNS</span>, <span class="mono">SSDP/UPnP</span>, <span class="mono">DHCP</span> and <span class="mono">NetBIOS</span> to the whole segment. Parsing that chatter identifies them (Chromecast, printer, router, Apple device...) without touching anyone's traffic.</li>
+      <li><strong>Hostname resolution</strong> - reverse DNS usually fails on a home LAN, so each unnamed host is asked directly: a <strong>NetBIOS node-status query</strong> (what <code>nbtstat -A</code> sends - Windows answers with its computer name, workgroup and MAC), then a <strong>unicast mDNS reverse lookup</strong> (Apple / Linux / Android / IoT answer with their <span class="mono">.local</span> name).</li>
+    </ul>
+  </div>
+
+  <h3>Mapping what a host exposes</h3>
+  <p>Select a device and hit <strong>Scan ports on selected</strong>. It runs a TCP-connect scan across common ports,
+  identifies the service, grabs a banner where one is offered (so you get <span class="mono">OpenSSH_8.9p1</span>, not
+  just "22 open"), and attaches a plain-English risk note to anything worth reviewing. Risky findings raise a
+  <span class="cat">service</span> warning and mark the row with a warning symbol.</p>
+  <div class="note">A port scan sends real traffic. On your own network this is routine asset auditing - the same thing
+  you would do with nmap against your own kit. Keep it there: only scan hosts you own or are explicitly authorised to test.</div>
+
+  <h3>LAN attack detection</h3>
+  <ul class="tight">
+    <li><span class="cat">rogue</span> - the default gateway is trusted as the DHCP server at startup; any <em>other</em> server that starts answering raises an alert naming it, its MAC, and the gateway/DNS it is advertising. Catches both a DHCP-based man-in-the-middle and the honest accident of a spare router plugged in with DHCP still on.</li>
+    <li><span class="cat">arp</span> - ARP spoofing / MITM, from an IP's MAC address changing.</li>
+    <li><span class="cat">device</span> - a new device joining after the initial inventory has settled.</li>
+  </ul>
+
+  <div class="warn"><strong>What this cannot do.</strong> An access point behaves like a switch: it only forwards your
+  traffic to you, plus broadcasts. So you can inventory, fingerprint, name and port-scan every device - but you cannot
+  passively read another device's traffic contents without a managed switch's mirror port or a network TAP. That is a
+  hardware boundary, not a software one. (The alternative, ARP spoofing, is a man-in-the-middle attack and is
+  deliberately not implemented here.)</div>
+</section>
+<section id="procmap">
+  <h2><span class="num">04</span>Process → connection map</h2>
+  <p class="lead">Which servers is this game (or app) talking to, and what is each one for?</p>
+  <p>From the <strong>Applications</strong> tab, pick a process and choose <strong>Map connections</strong>.
+  You get a visual with the process at the centre and every endpoint it talks to radiating out — each
+  node coloured by its <em>role</em>. Click a node to see the evidence behind that verdict.</p>
+  <div class="card">
+    <h4>Roles it distinguishes</h4>
+    <p>Game server, voice chat, matchmaking / platform API, anti-cheat, auth/login, CDN / content /
+    update, telemetry / analytics, web / API, and peer-to-peer. The classifier weighs the resolved
+    hostname and TLS SNI, ports, protocol, packet shape and rate, byte volume, ASN/ISP, and whether a
+    flow looks like an RTP media stream — then explains its reasoning per endpoint.</p>
+  </div>
+  <p>The side panel also rolls the endpoints up by owning organisation (ASN/ISP) and flags the
+  outliers worth a second look — a lone host that isn't a big known cloud, or an org appearing for the
+  first time. Example, for a multiplayer game session:</p>
+  <div class="flow">
+    <span class="stage">game server · i3D.net</span><span class="arrow">·</span>
+    <span class="stage">voice · Vivox (RTP)</span><span class="arrow">·</span>
+    <span class="stage">matchmaking · AWS</span><span class="arrow">·</span>
+    <span class="stage">anti-cheat · BattlEye</span><span class="arrow">·</span>
+    <span class="stage">updates · Akamai</span>
+  </div>
+</section>
+<section id="enrich">
+  <h2><span class="num">05</span>Enriching an endpoint</h2>
+  <p>Right-click any IP anywhere in the app and choose <strong>Enrich IP</strong> for a single
+  dossier that assembles everything known about it, led by a headline risk verdict
+  (<span class="sev-alert">HOSTILE</span> / <span class="sev-warn">WATCH</span> /
+  <span class="sev-info">NORMAL</span>).</p>
+  <div class="grid">
+    <div class="card"><h4>Who &amp; where</h4><p>Classification, resolved hostname, geolocation, ASN/ISP, and reputation-feed matches.</p></div>
+    <div class="card"><h4>What it's done</h4><p>DNS history, active flows with byte orientation, cleartext HTTP, and the correlated incident it belongs to.</p></div>
+    <div class="card"><h4>Fingerprints</h4><p>Passive OS guess (from the TCP SYN) and, on demand, an active JARM fingerprint of its TLS stack.</p></div>
+    <div class="card"><h4>Link quality</h4><p>Passive RTT (from the TCP handshake) and jitter (from real-time UDP) — how good the connection to it actually is.</p></div>
+  </div>
+  <p>The same menu offers <strong>DNS chain</strong> (why this connection exists — the lookup that
+  led to it, or a flag if it was contacted with no DNS at all) and <strong>Export PCAP</strong> (dump
+  the connection's retained packets to open in Wireshark).</p>
+</section>
+<section id="map">
+  <h2><span class="num">06</span>Reading the ops map</h2>
+  <p class="lead">A live world map (on the Metrics view) of every remote endpoint your machine talks to.</p>
+  <div class="card">
+    <h4>What you're looking at</h4>
+    <ul class="tight">
+      <li><strong>You</strong> sit at your geographic location; arcs reach out to each remote endpoint.</li>
+      <li>Each arc and node is <strong>coloured by the local process</strong> that owns the connection — the legend (top-right) lists them; click one to isolate just that process.</li>
+      <li>Moving dots travel along the arcs:
+        <span class="legend-swatch" style="background:#ffa42b"></span><strong>amber = upload</strong> (you → remote),
+        <span class="legend-swatch" style="background:#4dd2ff"></span><strong>cyan = download</strong> (remote → you).</li>
+      <li>A <strong style="color:#ff4646">red ring and “!”</strong> mark a flagged endpoint (an unacknowledged alert). Acknowledging its alert clears the flag.</li>
+      <li>Continents are drawn with a glowing cyan coastline against the dark ocean; the brighter lines are the equator and prime meridian.</li>
+    </ul>
+  </div>
+  <h3>Controls</h3>
+  <ul class="tight">
+    <li><strong>Scroll</strong> to zoom (centred on the cursor).</li>
+    <li><strong>Drag</strong> to pan the world — the HUD panels stay fixed.</li>
+    <li>On-canvas <span class="mono">+</span> / <span class="mono">−</span> / <span class="mono">R</span> buttons zoom in, out, and reset.</li>
+    <li>Hover an endpoint for a tooltip; it includes the flag reason if the node is flagged.</li>
+  </ul>
+</section>
+<section id="tls">
+  <h2><span class="num">07</span>TLS certificate inspection</h2>
+  <p class="lead">JA3 fingerprints the client; the certificate is what the server claims to be.</p>
+  <p>Select a packet carrying a TLS handshake in the <strong>Inspection</strong> tab and the anatomy gains a
+  <strong>TLS certificate</strong> section: subject, issuer, validity window, key type and size, signature algorithm,
+  the SAN name list, and the serial. Anything wrong with it is listed underneath in red.</p>
+  <h3>What gets flagged</h3>
+  <table>
+    <tr><th>Flag</th><th>Why it matters</th></tr>
+    <tr><td><strong>hostname mismatch</strong></td><td>The certificate is issued for names that don't include the host the client asked for. This is the classic signature of TLS interception.</td></tr>
+    <tr><td><strong>self-signed</strong></td><td>No certificate authority vouches for it. Normal for IoT and lab kit; suspicious for a public site.</td></tr>
+    <tr><td><strong>expired / not yet valid</strong></td><td>Outside its validity window - either neglected infrastructure or a clock/forgery problem.</td></tr>
+    <tr><td><strong>weak key</strong></td><td>RSA below 2048 bits.</td></tr>
+    <tr><td><strong>weak signature</strong></td><td>Signed with MD5 or SHA-1, both of which are broken.</td></tr>
+    <tr><td><strong>long validity</strong></td><td>A leaf certificate valid far longer than a public CA would issue. (Suppressed for CA certificates, where long lifetimes are normal.)</td></tr>
+  </table>
+  <h3>Passive vs active</h3>
+  <div class="warn"><strong>TLS 1.3 hides certificates from passive capture.</strong> In TLS 1.3 the Certificate message
+  is encrypted, so watching the wire reveals nothing about it - that is the protocol working as designed. Passive
+  inspection therefore only sees certificates on <strong>TLS 1.2 and below</strong>, which in practice is where most
+  IoT, internal, and self-signed services live.</div>
+  <p>To inspect a modern server anyway, use the <strong>Network</strong> tab: scanning a host's ports performs a real TLS
+  handshake against any TLS service it finds and retrieves the certificate that way. Because the app is the client, this
+  works on TLS 1.3 too. Certificate problems found this way raise <span class="cat">cert</span> alerts.</p>
+  <div class="note">On a LAN scan the app dials a host by IP, so a certificate issued for a hostname naturally won't
+  match. That specific case is <em>not</em> flagged, to avoid a mismatch warning on every device you scan.</div>
+</section>
+<section id="dpi">
+  <h2><span class="num">08</span>Protocol classification (DPI)</h2>
+  <p class="lead">A port number is a hint, not an answer. Real inspection asks what a stream <em>is</em> from its bytes.</p>
+  <p>Select a packet in the <strong>Inspection</strong> tab and the anatomy gains a <strong>Protocol classification</strong>
+  section. Identification is by signature only - the port is never used to decide <em>what</em> something is, only to report
+  whether it turned up somewhere unexpected. Around two dozen protocols are recognised, including HTTP, TLS, SSH, DNS, SMB,
+  RDP, VNC, FTP, SMTP, IMAP, POP3, Telnet, MySQL, PostgreSQL, Redis, QUIC, WireGuard, BitTorrent, SIP, MQTT, SNMP, NTP and IRC.</p>
+  <h3>Why this matters</h3>
+  <table>
+    <tr><th>Situation</th><th>What you learn</th></tr>
+    <tr><td><strong>SSH on port 443</strong></td><td>Raised as an <span class="cat">protocol</span> ALERT. Ports 53, 80, 443, 123 and 25 are nearly always allowed outbound, so a foreign protocol on one is the classic way to tunnel past a firewall.</td></tr>
+    <tr><td><strong>SSH on port 2222</strong></td><td>A milder warning - either a service you forgot about, or something avoiding the standard port.</td></tr>
+    <tr><td><strong>HTTP on 8080</strong></td><td>Nothing. 8080 is a recognised alternate HTTP port, so it isn't a mismatch.</td></tr>
+    <tr><td><strong>High-entropy bytes on port 80</strong></td><td>No signature plus near-random data on a port that should be plaintext suggests an encrypted tunnel or custom C2.</td></tr>
+  </table>
+  <h3>Entropy, honestly</h3>
+  <p>Entropy measures how random data looks - encrypted and compressed data approaches 8 bits/byte, plaintext sits near 4.4.
+  But entropy is capped by sample size: 400 random bytes only reach ~7.46, because you can't fill 256 bins uniformly with 400
+  draws. A single fixed threshold would therefore silently miss every short encrypted payload, so the bar scales with payload
+  length (measured against real random data at each size) and anything under 128 bytes isn't judged at all.</p>
+  <div class="note"><strong>What is deliberately not identified:</strong> RTP. Its header is essentially two version bits and a
+  payload-type range, which matches random data about 3% of the time - measured. Reliable RTP identification needs flow context
+  (a stable SSRC, incrementing sequence numbers), so it belongs in flow-level classification rather than single-packet
+  signatures. Reporting "unknown" is better than guessing.</div>
+</section>
+<section id="review">
+  <h2><span class="num">09</span>Reviewing a capture</h2>
+  <p class="lead">Point the full inspection stack at a file instead of the wire.</p>
+  <p>The live engine inspects packets as they arrive. <strong>Import .pcap</strong> in the Inspection tab does the same
+  work to a capture file and hands back a structured report: how many packets and conversations, which protocols are
+  present, the busiest ports and top talkers, every DNS lookup and what it resolved to, the TLS certificates presented,
+  any cleartext credentials, and a consolidated findings list. It opens automatically when a capture contains findings,
+  and the <strong>Capture review</strong> button reopens it. Alerts and warnings are colour-coded in the report.</p>
+  <div class="note"><strong>Completely isolated.</strong> Reviewing a file never writes to your live DNS log, endpoint
+  table, map, or event bus - so opening someone else's capture, or a sample from the internet, can't contaminate what
+  you're seeing from your own network. Findings are also judged from the packet timestamps in the file, not the wall
+  clock.</div>
+  <p>The classic anomaly and port-scan detectors still run over an import as well, so scans and sweeps inside the file
+  surface on the Alerts tab as before.</p>
+</section>
+
+<section id="detections">
+  <h2><span class="num">10</span>Detection categories</h2>
+  <p class="lead">Every alert carries a category. This is the full vocabulary of what SentinelFusion
+  watches for — the left border marks typical severity
+  (<span style="color:var(--red)">alert</span> ·
+  <span style="color:var(--amber)">warning</span> ·
+  <span style="color:var(--muted)">info</span>).</p>
+  <div class="catgrid">
+    <div class="catchip alert"><span class="k">scan</span><span class="v">Many ports, one host — a port scan</span></div>
+    <div class="catchip warn"><span class="k">sweep</span><span class="v">One host pinging many addresses</span></div>
+    <div class="catchip alert"><span class="k">flood</span><span class="v">SYN burst without completion — DoS</span></div>
+    <div class="catchip alert"><span class="k">arp</span><span class="v">MAC changed — ARP spoofing / MITM</span></div>
+    <div class="catchip warn"><span class="k">dns</span><span class="v">DNS zone-transfer (AXFR) attempt</span></div>
+    <div class="catchip alert"><span class="k">tunnel</span><span class="v">Data tunnelled over DNS</span></div>
+    <div class="catchip alert"><span class="k">dga</span><span class="v">High-entropy generated domains</span></div>
+    <div class="catchip alert"><span class="k">intel</span><span class="v">Matched a known-bad reputation feed</span></div>
+    <div class="catchip alert"><span class="k">protocol</span><span class="v">Protocol on the wrong port</span></div>
+    <div class="catchip alert"><span class="k">ja3</span><span class="v">TLS fingerprint of known tooling</span></div>
+    <div class="catchip warn"><span class="k">http</span><span class="v">Cleartext HTTP worth attention</span></div>
+    <div class="catchip alert"><span class="k">cert</span><span class="v">Bad / mismatched TLS certificate</span></div>
+    <div class="catchip alert"><span class="k">creds</span><span class="v">Password sent unencrypted</span></div>
+    <div class="catchip alert"><span class="k">rogue</span><span class="v">Unexpected second DHCP server</span></div>
+    <div class="catchip warn"><span class="k">service</span><span class="v">Exposed risky/unauthenticated service</span></div>
+    <div class="catchip alert"><span class="k">exfil</span><span class="v">Large outbound transfer to one host</span></div>
+    <div class="catchip warn"><span class="k">beacon</span><span class="v">Evenly-timed C2 beaconing</span></div>
+    <div class="catchip alert"><span class="k">watch</span><span class="v">Matched one of your Watchlist rules</span></div>
+    <div class="catchip alert"><span class="k">wifi</span><span class="v">802.11 deauth flood / rogue AP / evil twin</span></div>
+    <div class="catchip info"><span class="k">soar</span><span class="v">A playbook ran or a case changed</span></div>
+    <div class="catchip warn"><span class="k">device</span><span class="v">Local-subnet device discovery</span></div>
+    <div class="catchip info"><span class="k">endpoint</span><span class="v">Notable endpoint observation</span></div>
+    <div class="catchip info"><span class="k">system</span><span class="v">Capture start/stop, PCAP import, status</span></div>
+  </div>
+  <div class="note">Thresholds for scan, sweep, flood, exfil, beacon and more are tunable in
+  <strong>Settings → Detection rules</strong> and take effect on the next packet. Each category also
+  maps to a MITRE ATT&amp;CK technique — see <a href="#mitre">ATT&amp;CK mapping</a>.</div>
+</section>
+
+<section id="incidents">
+  <h2><span class="num">11</span>Incident correlation</h2>
+  <p class="lead">A real intrusion isn't one alert - it's a chain. This connects them.</p>
+  <p>Every detector fires independently, so a single attack scatters across the Alerts tab: a scan, then a new service,
+  then beaconing, then a large upload - all involving the same host. The <strong>Incidents</strong> tab groups events that
+  share an actor within a time window into one <strong>scored incident</strong>, and names the pattern when it recognises
+  the classic kill-chain shape.</p>
+  <h3>How scoring works</h3>
+  <ul class="tight">
+    <li>Each signal contributes by category weight and severity - <span class="mono">exfil</span> and
+    <span class="mono">beacon</span> weigh heavily, <span class="mono">device</span> barely at all.</li>
+    <li><strong>Breadth beats repetition.</strong> Four different detectors firing scores far higher than the same one
+    firing forty times - because spanning multiple kill-chain stages (recon, access, evasion, C2, exfil) is what
+    distinguishes a real intrusion from noise.</li>
+    <li>The result is banded into LOW / MEDIUM / HIGH / CRITICAL, and every incident carries the exact signals that built
+    its score, so you can see <em>why</em>.</li>
+  </ul>
+  <p>Select an incident to see its timeline and the detectors that fired; acknowledge it to clear it. The
+  <strong>Rebuild from history</strong> button re-derives incidents from the stored event log - a lightweight retro-hunt over everything recorded so far. The <strong>Logs</strong> tab also has a full <strong>Retro-hunt</strong> search - filter the entire stored event history by text, category, severity or source IP.</p>
+</section>
+<section id="mitre">
+  <h2><span class="num">12</span>MITRE ATT&amp;CK mapping</h2>
+  <p class="lead">Every detector speaks the field's standard language.</p>
+  <p>Each detection category maps to the real MITRE ATT&amp;CK technique(s) it represents. An incident's
+  technique set is the union across the detectors that fired, de-duplicated and ordered by tactic — so a
+  full intrusion reads as a recognisable progression rather than a pile of alerts:</p>
+  <div class="flow">
+    <span class="stage">T1046 · Discovery</span><span class="arrow">→</span>
+    <span class="stage">T1071 · Command &amp; Control</span><span class="arrow">→</span>
+    <span class="stage">T1041 · Exfiltration</span>
+  </div>
+  <p>Technique IDs appear on the incident detail, are folded into the case summary, and are printed in
+  the PDF report. <strong>Settings → ATT&amp;CK coverage</strong> lists every technique the sensors can
+  observe, grouped by tactic.</p>
+  <div class="note">The mapping is deliberately limited to network-observable techniques the sensors
+  can actually justify. A packet sensor can't see, say, Persistence or Privilege Escalation — so those
+  tactics aren't claimed. Honest coverage beats an inflated matrix.</div>
+</section>
+<section id="dns">
+  <h2><span class="num">13</span>The DNS log</h2>
+  <p class="lead">DNS shows intent before the connection happens - a machine asks for a name, then talks to whatever came back.</p>
+  <p>The <strong>DNS</strong> tab logs both halves of every lookup: which host asked, what it asked for, the record type,
+  the IPs that came back, the CNAME chain, and the TTL. Rows are colour-coded - amber for failed lookups, grey for a query
+  still awaiting a reply, red when a resolved IP is currently flagged.</p>
+  <h3>Why it earns its place</h3>
+  <ul class="tight">
+    <li><strong>The reverse map.</strong> Every answered lookup teaches the app that an IP belongs to a domain, so a bare
+    address elsewhere - in an endpoint dossier, on the ops map - gets labelled with the name it came from.</li>
+    <li><strong>Bad resolutions.</strong> If a domain resolves to an IP on the reputation feeds, that raises an
+    <span class="cat">intel</span> alert naming the domain - you catch it at lookup time, before the connection.</li>
+    <li><strong>NXDOMAIN visibility.</strong> A burst of failed lookups is exactly how domain-generation-algorithm malware
+    looks while it hunts for its command server. The <span class="mono">Failed lookups only</span> filter isolates them.</li>
+  </ul>
+  <div class="note">This is the same traffic <span class="mono">dns_analyzer</span> watches for tunneling and DGA detection -
+  that module does the <em>detecting</em>, this one does the <em>logging</em> and the reverse map.</div>
+</section>
+<section id="http">
+  <h2><span class="num">14</span>HTTP transactions</h2>
+  <p class="lead">For traffic that isn't encrypted, HTTP tells you almost everything.</p>
+  <p>The <strong>HTTP</strong> tab reconstructs every cleartext request and pairs it with its response: method, full URL,
+  status code, content-type, and the request/response headers. Rows flagged as notable are amber; server errors are red.
+  Filter by text, or show only flagged transactions.</p>
+  <h3>Passive software inventory</h3>
+  <p>The <strong>Software inventory</strong> button lists everything seen by its <span class="mono">User-Agent</span> (clients)
+  and <span class="mono">Server</span> header (servers), with counts. This is a genuinely useful free by-product: outdated
+  browsers, IoT firmware strings, and - flagged as <span class="tag">TOOL</span> - non-browser clients like
+  <span class="mono">curl</span>, <span class="mono">python-requests</span>, <span class="mono">powershell</span> or scanners
+  that usually shouldn't be talking to the internet.</p>
+  <h3>What gets flagged</h3>
+  <ul class="tight">
+    <li>HTTP Basic-auth or a password/token in the URL - credentials crossing in the clear.</li>
+    <li>A download of an executable or script (<span class="mono">.exe</span>, <span class="mono">.ps1</span>, <span class="mono">.apk</span>...) over HTTP.</li>
+    <li>Automation/tooling User-Agents, and requests with no Host header.</li>
+  </ul>
+  <div class="note">Cleartext only, by definition - HTTPS is encrypted, so those requests appear as TLS in the protocol
+  view instead. The HTTP analysis also runs over imported captures and is included in the capture review.</div>
+</section>
+<section id="flows">
+  <h2><span class="num">15</span>Session / flow records</h2>
+  <p class="lead">Individual packets are noise; the conversation is the signal.</p>
+  <p>The <strong>Flows</strong> tab groups packets into bidirectional sessions, keyed by the two endpoints regardless of
+  direction. Each row is one conversation: the protocol (identified by deep inspection, not just the port), the endpoints
+  with the remote hostname if DNS saw it, the TCP state, the duration, and - the useful part - the bytes sent in each
+  direction. Sort by total bytes, bytes out, duration, packets, or most-recent, and optionally hide closed connections.</p>
+  <h3>What the shape tells you</h3>
+  <ul class="tight">
+    <li><strong>Big out, small in.</strong> A high out/in ratio is what a data upload looks like. Rows where a lot went out
+    for little in reply are highlighted - worth knowing what they are and where they're going.</li>
+    <li><strong>Long-lived, low-volume.</strong> A connection open for a long time carrying little traffic can be a tunnel
+    or a remote-access session.</li>
+    <li><strong>TCP state.</strong> A pile of half-open (<span class="mono">syn_sent</span>) flows is a sign of a scan or a
+    SYN flood; <span class="mono">reset</span> flows are refused connections.</li>
+  </ul>
+  <div class="note">Flows expire after five minutes of silence and the table is capped, so long captures stay responsive.
+  Flow accounting also runs over imported captures and appears in the capture review. This is also the context that lets
+  protocols like RTP - which can't be identified from a single packet - be recognised reliably, since a flow exposes the
+  stable endpoints and timing that a lone packet doesn't.</div>
+</section>
+<section id="soar">
+  <h2><span class="num">16</span>Cases &amp; playbooks (SOAR)</h2>
+  <p class="lead">Security orchestration, automation &amp; response — scoped to investigation.</p>
+  <p>When correlation produces an incident of medium severity or higher, SentinelFusion's SOAR layer
+  goes to work automatically. It mirrors the three capabilities of a SOAR platform — case management,
+  automation, and centralised intelligence — while staying firmly on the defensive side of the line.</p>
+
+  <h3>Case management</h3>
+  <p>An incident becomes a <strong>case</strong> you work through a lifecycle:</p>
+  <div class="flow">
+    <span class="stage">new</span><span class="arrow">→</span>
+    <span class="stage">investigating</span><span class="arrow">→</span>
+    <span class="stage">contained</span><span class="arrow">→</span>
+    <span class="stage">closed</span>
+  </div>
+  <p>Each case carries an assignee, a timestamped note timeline, the ATT&amp;CK techniques involved, and
+  a list of recommended actions. Everything persists to the database, so the record survives restarts.</p>
+
+  <h3>Playbooks</h3>
+  <p>A playbook is a trigger plus an ordered list of investigative actions. Triggers fire on incident
+  shape — any incident, critical/high, suspected C2, credential exposure, data exfiltration — and run
+  steps like: enrich the actor, trace the DNS resolution chain, capture PCAP evidence, hunt the same
+  pattern on other hosts, open a case, tag its kill-chain stage, and attach recommended actions. Every
+  action is <strong>read-only</strong>. The engine gathers, correlates, and recommends; it never
+  changes a firewall rule or kills a process.</p>
+
+  <h3>Recommended actions, applied by a human</h3>
+  <p>Where containment is warranted the case says so in words — "review whether this IP should be
+  blocked at the perimeter (analyst decision, not applied automatically)" — for a person to act on.
+  That boundary is the whole point: automation as a force-multiplier, not an autopilot.</p>
+
+  <h3>Run log</h3>
+  <p>Every automated action is recorded with its result. The <strong>Run log</strong> (button on the
+  Cases tab) is the audit trail — what fired, when, against whom, and what it found. An
+  <strong>Auto-run playbooks</strong> toggle lets you work incidents by hand instead.</p>
+  <div class="warn"><strong>Investigative only.</strong> SOAR here never executes containment. It is an
+  analyst's assistant that does the routine first steps and writes them down.</div>
+</section>
+<section id="reporting">
+  <h2><span class="num">17</span>Reports</h2>
+  <p>From the Cases tab, <strong>Generate report</strong> produces a professional, case-centric PDF an
+  analyst can attach to a ticket or hand to a manager. It gathers the case detail, the mapped ATT&amp;CK
+  techniques, the actor's enrichment profile, the full investigation timeline, the recommended actions,
+  and the SOC metrics at time of writing — one self-contained document.</p>
+  <p>The older traffic-oriented report (incidents, devices, captures, alerts) is still available from
+  the Inspection tab for a broad session summary.</p>
+</section>
+<section id="metrics">
+  <h2><span class="num">18</span>SOC metrics</h2>
+  <p>Detection is half of operations; response is the other half. The <strong>SOC metrics</strong>
+  window (Cases tab) reports the numbers a security lead watches:</p>
+  <ul class="tight">
+    <li><strong>MTTA / MTTR</strong> — mean time to acknowledge (first action on a case) and to resolve
+      (open → closed).</li>
+    <li><strong>Case aging</strong> — open cases bucketed by age (&lt;1h / 1–24h / 1–7d / &gt;7d), so
+      nothing rots unnoticed.</li>
+    <li><strong>Detection trend</strong> — events per day over the last week, with an inline bar chart
+      and a by-severity breakdown.</li>
+  </ul>
+  <p>All of it is derived from real case and event history, not synthetic counters.</p>
+</section>
+<section id="rules">
+  <h2><span class="num">19</span>Detection rules &amp; tuning</h2>
+  <p class="lead">The detection engine isn't a black box.</p>
+  <p><strong>Settings → Detection rules</strong> opens a catalog of every detector: what it fires on,
+  the ATT&amp;CK technique it maps to, and — where it has one — its live numeric threshold. Analysts can:</p>
+  <ul class="tight">
+    <li><strong>Tune a threshold</strong> (port-scan count, exfil volume, beacon intervals, deauth-flood
+      count, correlation window). The change reflects onto the running engine immediately, on the next
+      packet — no restart.</li>
+    <li><strong>Enable or disable a rule.</strong> A disabled rule's whole category is suppressed at the
+      source, so it stops generating events and stops feeding correlation.</li>
+  </ul>
+  <p>The catalog is the single source of truth for what's watching and how sensitively.</p>
+</section>
+<section id="health">
+  <h2><span class="num">20</span>Health &amp; self-check</h2>
+  <p>A monitoring tool that quietly stops capturing is worse than none. <strong>Settings → Health</strong>
+  watches the watcher and refreshes live:</p>
+  <ul class="tight">
+    <li><strong>Capture</strong> — packets/sec and liveness (is traffic still arriving?).</li>
+    <li><strong>Buffers</strong> — in-memory footprint: endpoints, flows, DNS records, retained packets,
+      event buffer.</li>
+    <li><strong>Database</strong> — on-disk size of the incident store.</li>
+    <li><strong>Subsystems</strong> — each module pinged and reported ok / error / absent.</li>
+  </ul>
+  <p>It resolves to a single verdict — <span style="color:var(--green)">HEALTHY</span>,
+  <span style="color:var(--amber)">DEGRADED</span>, or
+  <span style="color:var(--muted)">NO&nbsp;TRAFFIC</span> — so a stalled sensor is obvious at a glance.</p>
+</section>
+<section id="settings">
+  <h2><span class="num">21</span>Settings</h2>
+  <p class="lead">All saved to <code>sentinel_config.json</code> and applied live.</p>
+  <table>
+    <tr><th>Setting</th><th>What it does</th></tr>
+    <tr><td><strong>Capture interface</strong></td><td>Which network adapter to sniff on. Changing it restarts capture. “Automatic” lets scapy pick the primary interface.</td></tr>
+    <tr><td><strong>WiGLE API token</strong></td><td>Enables the WiFi tab's WiGLE lookups. Shared with the WiFi tab.</td></tr>
+    <tr><td><strong>Detection thresholds</strong></td><td>Tune sensitivity: port-scan threshold, ping-sweep hosts, SYN-flood count, exfil size (MB), beacon intervals, and intel refresh interval.</td></tr>
+    <tr><td><strong>GeoIP folder</strong></td><td>Folder holding <code>GeoLite2-City.mmdb</code> / <code>GeoLite2-ASN.mmdb</code> for offline geolocation and ASN.</td></tr>
+    <tr><td><strong>JA3 blocklist file</strong></td><td>A file of known-bad JA3 fingerprints (one MD5 per line, or CSV). Loaded for the <span class="cat">ja3</span> detector.</td></tr>
+    <tr><td><strong>Threat-intel feeds</strong></td><td>Shows how many known-bad indicators are loaded from the reputation feeds, with a refresh button.</td></tr>
+    <tr><td><strong>Desktop notifications</strong></td><td>Enable corner-toast alerts, and optionally include warnings (not just alerts).</td></tr>
+    <tr><td><strong>Privacy / Tor</strong></td><td>Route OSINT lookups through a SOCKS/HTTP proxy or Tor; detect whether Tor is running and test the exit IP.</td></tr>
+  </table>
+</section>
+<section id="features">
+  <h2><span class="num">22</span>Key features</h2>
+  <div class="grid2">
+    <div class="card"><h4>Alert triage / acknowledge</h4><p>Acknowledge alerts you've reviewed — they dim, drop out of the HUD counters, and unflag their endpoint on the map. Filter with “Hide acknowledged”.</p></div>
+    <div class="card"><h4>PDF report</h4><p>From the Inspection tab, generate a report covering traffic summary, top endpoints (with ASN), a detections-and-alerts breakdown, and your watchlist.</p></div>
+    <div class="card"><h4>CSV / JSON export</h4><p>Export all alerts (with an <em>acknowledged</em> column) from the Alerts tab, for spreadsheets or a SIEM.</p></div>
+    <div class="card"><h4>TLS certificate inspection</h4><p>See who a server claims to be: subject, issuer, validity, key, signature and SAN list - with self-signed, expired, weak-key and hostname-mismatch flagged. Shows in the packet anatomy, and the Network tab fetches certificates from your own hosts directly.</p></div>
+    <div class="card"><h4>Follow TCP stream</h4><p>Reassemble a full TCP conversation from a selected packet, with direction colouring and an ASCII/hex toggle.</p></div>
+    <div class="card"><h4>Capture review</h4><p>Import a pcap and the whole inspection stack runs over it offline - protocol classification, DNS, TLS certificates, cleartext credentials and every finding - in a report that never touches your live monitoring state.</p></div>
+    <div class="card"><h4>PCAP import / export</h4><p>Load a capture file to inspect and replay the detectors over it (without touching live state), or save what you've captured.</p></div>
+    <div class="card"><h4>Desktop notifications</h4><p>A corner toast when a serious alert fires. Toggle it — and whether warnings count too — in Settings.</p></div>
+    <div class="card"><h4>Offline GeoIP + ASN</h4><p>With MaxMind GeoLite2 files present, endpoints are located and ASN-tagged offline; otherwise it falls back to an online lookup.</p></div>
+    <div class="card"><h4>Tor / SOCKS routing</h4><p>Optionally route outbound OSINT lookups through a proxy or Tor for privacy (your own capture stays local).</p></div>
+  </div>
+</section>
+<section id="modules">
+  <h2><span class="num">23</span>Module reference</h2>
+  <p class="lead">What each file in the project does.</p>
+
+  <h3>Core</h3>
+  <div class="grid2">
+    <div class="card"><h4><span class="fn">app.py</span></h4><p>The main Tkinter GUI — all tabs, the HUD, theming, and wiring. Entry point: <code>python app.py</code>.</p></div>
+    <div class="card"><h4><span class="fn">threat_detection.py</span></h4><p>The capture engine. Aggregates packets per endpoint/flow, attributes processes, and runs the live checks.</p></div>
+    <div class="card"><h4><span class="fn">events.py</span></h4><p>The event bus — logging, the ring buffer + SQLite store, category explanations, and alert acknowledgment.</p></div>
+    <div class="card"><h4><span class="fn">dpi.py</span></h4><p>Deep packet inspection — decodes a packet into an ordered, human-readable anatomy, including TLS.</p></div>
+    <div class="card"><h4><span class="fn">db_manager.py</span></h4><p>SQLite / SQLAlchemy persistence for devices, captures, and events.</p></div>
+  </div>
+
+  <h3>Detectors</h3>
+  <div class="grid2">
+    <div class="card"><h4><span class="fn">anomaly_detectors.py</span></h4><p>Ping sweeps, SYN floods, ARP spoofing, and DNS zone-transfer detection.</p></div>
+    <div class="card"><h4><span class="fn">scan_detector.py</span></h4><p>Port-scan detection (many ports from one source).</p></div>
+    <div class="card"><h4><span class="fn">dns_analyzer.py</span></h4><p>DNS tunneling (entropy of subdomains) and DGA (high-entropy non-resolving domains).</p></div>
+    <div class="card"><h4><span class="fn">dns_log.py</span></h4><p>Full DNS message parser and transaction log. Builds the IP&nbsp;&rarr;&nbsp;domain reverse map that names endpoints across the app.</p></div>
+    <div class="card"><h4><span class="fn">cred_sniffer.py</span></h4><p>Extracts cleartext credentials from plaintext protocols — passwords are masked.</p></div>
+    <div class="card"><h4><span class="fn">os_fingerprint.py</span></h4><p>Passive OS guess from a host's TCP SYN (initial TTL + window size + option ordering, p0f-style). Surfaces the device that isn't what it claims to be.</p></div>
+    <div class="card"><h4><span class="fn">jarm_fingerprint.py</span></h4><p>Active TLS <em>server</em> fingerprinting (JARM). Sends ten varied ClientHellos and hashes the responses - C2 servers built from the same tooling share a JARM even behind different domains and valid certs. On-demand only, from the enrichment panel.</p></div>
+    <div class="card"><h4><span class="fn">wifi_wids.py</span></h4><p>Passive 802.11 wireless IDS: detects deauth/disassoc floods, rogue APs (your SSID from an unexpected BSSID) and evil twins. Detection-only - never transmits. Needs a monitor-mode-capable adapter; stays dormant and labelled otherwise.</p></div>
+    <div class="card"><h4><span class="fn">rtt_tracker.py</span></h4><p>Passive link quality - RTT from the TCP handshake (SYN to SYN-ACK) and jitter from real-time UDP inter-arrival spread. Answers "which game/voice server is laggy" with no active probing.</p></div>
+    <div class="card"><h4><span class="fn">dns_chain.py</span></h4><p>DNS resolution chains: links a live flow back to the lookup that spawned it, and flags connections to IPs with no observed DNS query (hard-coded / cached / IP-literal C2).</p></div>
+    <div class="card"><h4><span class="fn">infra_rollup.py</span></h4><p>Groups every connection by owning organization / ASN, so clusters of known cloud stand apart from the lone outlier host worth a second look.</p></div>
+    <div class="card"><h4><span class="fn">novelty.py</span></h4><p>First-seen ledger for IPs, domains and JA3/JARM fingerprints, persisted to disk. Flags infrastructure appearing for the first time this session.</p></div>
+    <div class="card"><h4><span class="fn">service_roles.py</span></h4><p>Classifies what each of a process's connections is <em>for</em> - game server, voice chat, matchmaking/platform, anti-cheat, CDN, telemetry - from hostname, ports, packet shape, RTP detection and ASN, with the evidence behind every verdict. Drives the Applications tab's "Map connections" view.</p></div>
+    <div class="card"><h4><span class="fn">enrichment.py</span></h4><p>Right-click any IP for one profile that assembles geo, ASN, reputation, resolved hostname, DNS history, flows, HTTP and its incident - with a headline risk verdict.</p></div>
+    <div class="card"><h4><span class="fn">mitre_attack.py</span></h4><p>Maps every detector category to real MITRE ATT&CK technique IDs, names and tactics. Incidents, cases and reports speak the field's standard language (T1046, T1071, T1041), with a coverage matrix of what the sensors can observe.</p></div>
+    <div class="card"><h4><span class="fn">detection_rules.py</span></h4><p>A governed catalog of every detector: what it fires on, its ATT&CK technique, and its live threshold. Analysts tune thresholds (reflected onto the running engine immediately) and enable/disable rules, which suppresses that category at the source.</p></div>
+    <div class="card"><h4><span class="fn">soc_metrics.py</span></h4><p>Operational metrics a security lead watches: MTTA / MTTR, open-case aging buckets, and detection-per-day trends, derived from real case and event history.</p></div>
+    <div class="card"><h4><span class="fn">health_monitor.py</span></h4><p>Watches the watcher: capture throughput and liveness, buffer and database sizes, and per-subsystem status, with a HEALTHY / DEGRADED / NO-TRAFFIC verdict so a stalled sensor never goes unnoticed.</p></div>
+    <div class="card"><h4><span class="fn">config_io.py</span></h4><p>Exports settings and detection tuning to a versioned JSON bundle and restores them on import - portable, reproducible deployments and pre-change backups.</p></div>
+    <div class="card"><h4><span class="fn">case_manager.py</span></h4><p>SOAR case management: turns a correlated incident into a case worked from new -> investigating -> contained -> closed, with assignee, a timestamped note timeline, and recommended analyst actions. Persists to incidents.db.</p></div>
+    <div class="card"><h4><span class="fn">playbook_engine.py</span></h4><p>SOAR automation: trigger-based playbooks that run investigative steps automatically when an incident fires - enrich the actor, capture PCAP evidence, run the resolution chain, hunt for the same pattern elsewhere, open a case. Investigative and evidence-gathering only; it recommends containment but never executes it. Every run is logged for audit.</p></div>
+    <div class="card"><h4><span class="fn">log_ingest.py</span></h4><p>Parses external logs - syslog (RFC 3164/5424), Windows Event Log, and generic JSON/key-value lines - into one normalized record, classifies security-relevant events (auth failures, firewall denies, lockouts, Windows event IDs), and forwards them so external logs correlate alongside packet detections.</p></div>
+    <div class="card"><h4><span class="fn">log_sources.py</span></h4><p>The listeners behind log ingestion: a UDP syslog server, a growing-file tailer, and a Windows Event Log reader, each on a background thread feeding log_ingest.</p></div>
+    <div class="card"><h4><span class="fn">feedback_loop.py</span></h4><p>Closes the loop: analysts mark detections true/false positive, and per-category precision drives honest, directional tuning recommendations against the detection-rules catalog. Nudges are applied only on explicit action.</p></div>
+    <div class="card"><h4><span class="fn">ml_anomaly.py</span></h4><p>Unsupervised anomaly detection - an Isolation Forest over per-endpoint flow features, trained on the observed baseline. Reports an explainable 0-1 anomaly score with the contributing features, so outliers come with reasons, not a black box.</p></div>
+    <div class="card"><h4><span class="fn">hunt_playbooks.py</span></h4><p>Guided threat-hunting procedures (undetected C2, slow exfil, lateral movement, malicious DNS): a hypothesis, ordered steps, and linked queries that pull real data from the app - a repeatable method, distinct from the automated SOAR response playbooks.</p></div>
+    <div class="card"><h4><span class="fn">forensics.py</span></h4><p>Reconstructs a multi-source chronological timeline for an actor, extracts IOCs (IPs, domains, JA3/JARM, URLs, ASNs), and assembles a tamper-evident evidence bundle with a SHA-256 of every artifact.</p></div>
+    <div class="card"><h4><span class="fn">integrations.py</span></h4><p>Outbound integration to the wider stack - Slack, Teams, or a SOAR/SIEM webhook - firing severity-gated incident notifications. One-directional and read-only: it never receives commands back or performs containment.</p></div>
+    <div class="card"><h4><span class="fn">correlation.py</span></h4><p>Groups related alerts about one actor into a single scored incident, recognising attack-chain patterns (recon &rarr; access &rarr; C2 &rarr; exfil) so a real intrusion reads as one HIGH incident, not a scatter of lines.</p></div>
+    <div class="card"><h4><span class="fn">flow_analytics.py</span></h4><p>Per-flow behavioural detection - beaconing (regular C2 check-ins), exfil (outbound-heavy transfers), and RTP media streams identified from flow behaviour rather than a single packet.</p></div>
+    <div class="card"><h4><span class="fn">flow_tracker.py</span></h4><p>Groups packets into bidirectional session records - bytes and packets each way, duration, TCP state, protocol and resolved host. Surfaces uploads, long-lived connections and half-open floods.</p></div>
+    <div class="card"><h4><span class="fn">http_log.py</span></h4><p>Reconstructs cleartext HTTP requests and responses, and builds a passive software inventory from User-Agent and Server headers.</p></div>
+    <div class="card"><h4><span class="fn">capture_review.py</span></h4><p>Runs the full inspection stack over an imported pcap - protocols, DNS, certificates, credentials, findings - completely isolated from live state.</p></div>
+    <div class="card"><h4><span class="fn">protocol_id.py</span></h4><p>Port-independent protocol identification from payload signatures, plus length-aware entropy analysis. Flags protocol/port mismatches and encrypted tunnels.</p></div>
+    <div class="card"><h4><span class="fn">ja3_intel.py</span></h4><p>Matches TLS JA3 fingerprints against a user-supplied blocklist.</p></div>
+    <div class="card"><h4><span class="fn">tls_certs.py</span></h4><p>X.509 certificate inspection - a hand-written DER parser (no extra dependencies) plus analysis for self-signed, expired, weak, and mismatched certificates. Can also fetch a certificate actively over TLS.</p></div>
+  </div>
+
+  <h3>LAN survey</h3>
+  <div class="grid2">
+    <div class="card"><h4><span class="fn">lan_monitor.py</span></h4><p>The device registry: tracks every host on the LAN and passively fingerprints it from mDNS / SSDP / DHCP / NetBIOS broadcasts.</p></div>
+    <div class="card"><h4><span class="fn">host_resolve.py</span></h4><p>Active hostname lookup - reverse DNS, NetBIOS node status (like <code>nbtstat -A</code>), then mDNS reverse.</p></div>
+    <div class="card"><h4><span class="fn">port_scanner.py</span></h4><p>TCP-connect service scan with banner grabbing and plain-English risk notes for exposed services.</p></div>
+    <div class="card"><h4><span class="fn">dhcp_monitor.py</span></h4><p>Rogue DHCP server detection - passively tracks which servers answer, alerts on unexpected ones.</p></div>
+  </div>
+
+  <h3>Intelligence &amp; geolocation</h3>
+  <div class="grid2">
+    <div class="card"><h4><span class="fn">threat_intel.py</span></h4><p>Pulls free IP-reputation feeds (abuse.ch, blocklist.de, Spamhaus, Tor exit list) and checks endpoints against them.</p></div>
+    <div class="card"><h4><span class="fn">geo_lookup.py</span></h4><p>Geolocation orchestrator — prefers offline data, falls back to an online batch lookup.</p></div>
+    <div class="card"><h4><span class="fn">geoip_local.py</span></h4><p>Offline MaxMind GeoLite2 City + ASN lookups; degrades gracefully if the data or library is absent.</p></div>
+    <div class="card"><h4><span class="fn">wifi_osint.py</span></h4><p>WiGLE area search and BSSID geolocation for the WiFi tab.</p></div>
+    <div class="card"><h4><span class="fn">net_proxy.py</span></h4><p>Routes the tool's own OSINT lookups through a chain of one or more proxies, via a small local SOCKS forwarder that nests the hops. Analyst opsec, with a live routing visual.</p></div>
+  </div>
+
+  <h3>Interface, inspection &amp; I/O</h3>
+  <div class="grid2">
+    <div class="card"><h4><span class="fn">ops_map.py</span></h4><p>The cinematic world map — pure Tkinter canvas with zoom, pan, and process legend.</p></div>
+    <div class="card"><h4><span class="fn">settings.py</span></h4><p>JSON config store with per-key validation and clamping.</p></div>
+    <div class="card"><h4><span class="fn">watchlist.py</span></h4><p>User watchlist rules (IP/CIDR, country, ASN) and matching.</p></div>
+    <div class="card"><h4><span class="fn">stream_follow.py</span></h4><p>TCP stream reassembly for Follow-TCP-Stream.</p></div>
+    <div class="card"><h4><span class="fn">pcap_io.py</span></h4><p>Reading and writing PCAP files (scapy-isolated).</p></div>
+    <div class="card"><h4><span class="fn">report_generator.py</span></h4><p>Now also produces a case-centric PDF report (case detail, ATT&CK techniques, enrichment, timeline, recommended actions, SOC metrics) an analyst can hand off. Builds the PDF report (reportlab).</p></div>
+    <div class="card"><h4><span class="fn">alert_export.py</span></h4><p>Exports alerts to CSV / JSON.</p></div>
+  </div>
+
+  <h3>Discovery &amp; support</h3>
+  <div class="grid2">
+    <div class="card"><h4><span class="fn">network_discovery.py</span></h4><p>Local-subnet device discovery via ARP scan.</p></div>
+    <div class="card"><h4><span class="fn">process_lookup.py</span></h4><p>Maps connections to owning processes.</p></div>
+    <div class="card"><h4><span class="fn">target_capture.py</span></h4><p>Focused per-target capture to a PCAP with findings.</p></div>
+    <div class="card"><h4><span class="fn">target_capture.py</span></h4><p>Focused per-target capture: run a short capture against one host, write a PCAP, and summarise it with DPI.</p></div>
+  </div>
+</section>
+<section id="deps">
+  <h2><span class="num">24</span>Optional dependencies</h2>
+  <p class="lead">The core runs on scapy + Tkinter. These unlock extra features and degrade gracefully if missing.</p>
+  <table>
+    <tr><th>Install</th><th>Unlocks</th></tr>
+    <tr><td><code>pip install geoip2</code> + GeoLite2 <code>.mmdb</code> files</td><td>Offline GeoIP city + ASN. Without it, geolocation uses the online fallback.</td></tr>
+    <tr><td><code>pip install PySocks</code> + Tor</td><td>Routing OSINT lookups through SOCKS/Tor. Without it, lookups stay direct.</td></tr>
+    <tr><td>A JA3 blocklist file</td><td>The <span class="cat">ja3</span> detector. It ships no fingerprints — point it at your own file in Settings.</td></tr>
+    <tr><td>A WiGLE API token</td><td>The WiFi tab's WiGLE lookups.</td></tr>
+  </table>
+  <div class="note">Data files (GeoLite2 databases, JA3 list) can sit beside the app or in a folder you set
+  in Settings. The app ships no bundled intelligence data of its own.</div>
+</section>
+<section id="safety">
+  <h2><span class="num">25</span>Safety &amp; ethics</h2>
+  <p>SentinelFusion is a <strong>defensive and investigative</strong> tool. To keep it that way:</p>
+  <ul class="tight">
+    <li>Only capture on networks you own or are authorised to monitor.</li>
+    <li>Test detectors against <strong>your own</strong> devices — never scan or probe systems you don't control.</li>
+    <li>OSINT lookups query <strong>public</strong> databases (reputation feeds, GeoIP, WiGLE) about addresses; treat what you learn responsibly.</li>
+    <li>Captured passwords are <strong>always masked</strong> before they're shown or logged — the tool flags exposure, it doesn't hoard secrets.</li>
+    <li>WiFi features are <strong>detection and OSINT only</strong>; there is no attack tooling here.</li>
+  </ul>
+  <div class="warn">This is a personal security-research project, provided as-is. It is not a substitute
+  for a professionally managed IDS/IPS, and it can produce false positives — always corroborate an
+  alert before acting on it.</div>
+</section>
+</main>
+</div>
+
+<footer>SentinelFusion — defensive network security, threat hunting &amp; OSINT. Documentation generated for the operator. Use only on networks you own or are authorised to monitor.</footer>
+</body>
+</html>

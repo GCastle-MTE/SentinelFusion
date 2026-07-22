@@ -1,0 +1,25 @@
+# --- SentinelFusion generated artifacts ---
+incidents.db                 # SQLite event/incident/case store (created at runtime)
+novelty_ledger.json          # first-seen ledger (created at runtime)
+*.pcap                       # exported captures
+evidence_*/                  # forensic evidence bundles
+case_*_report.pdf            # generated case reports
+report.pdf                   # generated traffic report
+sentinelfusion_config.json   # exported config bundles
+
+# --- GeoIP data (large, licensed separately) ---
+*.mmdb
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
