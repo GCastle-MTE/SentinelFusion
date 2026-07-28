@@ -120,9 +120,14 @@ def _probe_tls(ip, port):
         print(f"     negotiated only via {detail['mode']}")
     if cert.get("tls_version") or cert.get("cipher"):
         print(f"     {cert.get('tls_version', '?')}  {cert.get('cipher', '')}")
-    weak = _weak_crypto(cert)
-    if weak:
-        print("     WEAK CRYPTO: " + "; ".join(weak))
+    # Use the same analyzer the GUI scan uses. A private copy here drifted from
+    # the scanner three times already; sharing the check means the diagnostic
+    # and the tool can no longer disagree.
+    issues = [i for i in tls_certs.analyze(cert, hostname=ip) if i[0] != "INFO"]
+    for sev, label, detail in issues:
+        print(f"     [{sev}] {label}: {detail[:88]}")
+    if any(l in ("no forward secrecy", "weak key", "weak signature",
+                 "obsolete cipher") for _s, l, _d in issues):
         print("     -> this, not the protocol version, is why a default client "
               "refuses the handshake.")
 
@@ -241,40 +246,6 @@ def main():
     print("  bytes at 3.0s but not 0.6s -> raise the scanner's banner timeout")
     print("  bytes but 'nothing matched' -> service_fingerprint needs a rule")
     print("  silent everywhere           -> genuinely no version disclosed")
-
-
-def _weak_crypto(cert):
-    """Describe why a modern TLS client would reject this connection.
-
-    A default client refuses handshakes for reasons that have nothing to do with
-    the protocol version. Three separate causes, all seen on embedded gear:
-    an undersized key, a deprecated signature algorithm, or a cipher suite with
-    no forward secrecy. Reporting only the certificate misses the last one,
-    which is the most common on video recorders and printers.
-    """
-    notes = []
-    bits = cert.get("key_bits") or 0
-    ktype = (cert.get("key_type") or "").upper()
-    if ktype.startswith("RSA") and 0 < bits < 2048:
-        notes.append(f"{bits}-bit RSA key (modern clients require 2048+)")
-    elif bits and bits < 2048 and "EC" not in ktype:
-        notes.append(f"{bits}-bit {ktype or 'key'}")
-
-    sig = (cert.get("sig_alg") or "").lower()
-    if "sha1" in sig or "md5" in sig:
-        notes.append(f"signed with {cert.get('sig_alg')} (deprecated)")
-
-    # OpenSSL names forward-secret suites with an ECDHE-/DHE- prefix. A bare
-    # "AES256-GCM-SHA384" is static RSA key exchange: recorded traffic can be
-    # decrypted later by anyone who obtains the server's private key.
-    cipher = (cert.get("cipher") or "")
-    if cipher and not cipher.upper().startswith(("ECDHE", "DHE", "TLS_")):
-        notes.append(f"{cipher} - static key exchange, no forward secrecy")
-    elif "CBC" in cipher.upper():
-        notes.append(f"{cipher} - CBC mode, superseded by AEAD")
-    if "RC4" in cipher.upper() or "3DES" in cipher.upper() or "DES-" in cipher.upper():
-        notes.append(f"{cipher} - obsolete cipher")
-    return notes
 
 
 if __name__ == "__main__":

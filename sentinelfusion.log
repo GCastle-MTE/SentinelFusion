@@ -268,3 +268,57 @@
 2026-07-28 01:29:36 [ALERT] scan/192.168.1.6: Possible port scan: 192.168.1.6 -> 192.168.1.247 (25 ports in <= 60s)
 2026-07-28 01:29:37 [INFO] system/soar: Playbook 'Triage new incident' ran for 192.168.1.6 (4 steps)
 2026-07-28 01:30:54 [INFO] system/import: Imported testtest.pcap: reviewing 21 packets offline
+2026-07-28 01:49:56 [INFO] system/app: SentinelFusion monitoring started
+2026-07-28 01:50:42 [WARNING] protocol/142.250.114.188: 142.250.114.188: TLS found on port 5228, but it normally uses 443, 465, 563, 636. Either an unexpected service or something avoiding the usual port.
+2026-07-28 01:53:03 [INFO] soar/case: Case #6 -> closed
+2026-07-28 01:53:05 [INFO] soar/case: Case #5 -> closed
+2026-07-28 01:53:07 [INFO] soar/case: Case #4 -> closed
+2026-07-28 01:53:20 [INFO] soar/case: Case #3 -> investigating
+2026-07-28 01:55:37 [INFO] endpoint/172.64.155.209: 172.64.155.209 is a statistical outlier vs this network's baseline (score 0.892): packet count unusually high (2.5σ); total volume unusually high (2.2σ). A lead to investigate, not a verdict.
+2026-07-28 02:26:35 [ALERT] beacon/40.71.11.167: Possible beaconing to 40.71.11.167: 7 connections ~every 311s (jitter 7%)
+2026-07-28 02:26:35 [INFO] system/soar: Playbook 'Triage new incident' ran for 40.71.11.167 (4 steps)
+2026-07-28 02:26:35 [INFO] system/soar: Playbook 'Suspected C2' ran for 40.71.11.167 (4 steps)
+2026-07-28 02:35:49 [WARNING] device/192.168.1.237: New device appeared on the network (192.168.1.237)
+2026-07-28 02:41:20 [WARNING] protocol/23.219.89.185: 23.219.89.185: Traffic on port 80 has no recognisable protocol and 7.69 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 03:03:57 [ALERT] scan/192.168.1.6: Possible port scan: 192.168.1.6 -> 192.168.1.254 (25 ports in <= 60s)
+2026-07-28 03:04:46 [INFO] system/allowlist: 192.168.1.237 allowlisted for 'device' alerts
+2026-07-28 03:08:53 [WARNING] protocol/23.219.87.72: 23.219.87.72: Traffic on port 80 has no recognisable protocol and 7.74 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 03:08:53 [WARNING] protocol/23.219.87.71: 23.219.87.71: Traffic on port 80 has no recognisable protocol and 7.75 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 03:09:21 [WARNING] protocol/23.53.127.202: 23.53.127.202: Traffic on port 80 has no recognisable protocol and 7.73 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 03:09:21 [WARNING] protocol/23.219.87.15: 23.219.87.15: Traffic on port 80 has no recognisable protocol and 7.76 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 03:09:22 [WARNING] protocol/23.221.24.138: 23.221.24.138: Traffic on port 80 has no recognisable protocol and 7.74 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 03:09:22 [WARNING] protocol/146.75.106.172: 146.75.106.172: Traffic on port 80 has no recognisable protocol and 7.77 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 04:00:49 [WARNING] protocol/192.200.0.111: 192.200.0.111: Traffic on port 80 has no recognisable protocol and 7.83 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 04:02:46 [INFO] endpoint/23.219.87.15: 23.219.87.15 is a statistical outlier vs this network's baseline (score 0.965): packet rate unusually high (3.6σ); total volume unusually high (2.3σ); packet count unusually high (2.1σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/142.250.115.94: 142.250.115.94 is a statistical outlier vs this network's baseline (score 0.963): number of ports unusually high (13.1σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/100.100.100.100: 100.100.100.100 is a statistical outlier vs this network's baseline (score 0.932): outbound/inbound ratio unusually high (10.2σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/92.223.96.6: 92.223.96.6 is a statistical outlier vs this network's baseline (score 0.926): total volume unusually low (2.0σ); packet rate unusually high (2.0σ); connection duration unusually low (1.9σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/48.192.143.121: 48.192.143.121 is a statistical outlier vs this network's baseline (score 0.915): outbound/inbound ratio unusually high (1.6σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/23.52.118.8: 23.52.118.8 is a statistical outlier vs this network's baseline (score 0.911): packet rate unusually high (3.5σ); connection duration unusually low (2.0σ); total volume unusually low (1.6σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/23.219.87.72: 23.219.87.72 is a statistical outlier vs this network's baseline (score 0.902): total volume unusually high (2.6σ); packet count unusually high (2.5σ); packet rate unusually high (2.1σ). A lead to investigate, not a verdict.
+2026-07-28 04:02:46 [INFO] endpoint/20.60.244.129: 20.60.244.129 is a statistical outlier vs this network's baseline (score 0.891): outbound/inbound ratio unusually high (4.0σ). A lead to investigate, not a verdict.
+2026-07-28 04:19:01 [WARNING] protocol/23.53.127.170: 23.53.127.170: Traffic on port 80 has no recognisable protocol and 7.3 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 04:34:37 [ALERT] cert/98.87.219.230: TLS certificate (cWriI3TltOUQMPhNYNcO2HgJZ8iwQ1KjhnsWm7UlnEE) - hostname mismatch: Presented for [cWriI3TltOUQMPhNYNcO2HgJZ8iwQ1KjhnsWm7UlnEE] but the connection asked for ao8k1tq4n21z2-ats.iot.us-east-1.amazonaws.com. This is what TLS interception looks like.
+2026-07-28 04:45:06 [WARNING] protocol/151.236.29.171: 151.236.29.171: TLS found on port 10244, but it normally uses 443, 465, 563, 636. Either an unexpected service or something avoiding the usual port.
+2026-07-28 04:52:05 [WARNING] protocol/172.253.135.121: 172.253.135.121: Traffic on port 80 has no recognisable protocol and 7.7 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 07:36:44 [ALERT] beacon/138.91.182.224: Possible beaconing to 138.91.182.224: 7 connections ~every 3340s (jitter 1%)
+2026-07-28 07:36:44 [INFO] system/soar: Playbook 'Triage new incident' ran for 138.91.182.224 (4 steps)
+2026-07-28 07:36:44 [INFO] system/soar: Playbook 'Suspected C2' ran for 138.91.182.224 (4 steps)
+2026-07-28 07:41:17 [WARNING] protocol/34.104.35.123: 34.104.35.123: Traffic on port 80 has no recognisable protocol and 7.7 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.
+2026-07-28 07:49:59 [INFO] intel/threat_intel: loaded 24307 IPs + 1667 ranges from 4 feeds
+2026-07-28 08:22:51 [ALERT] beacon/34.160.176.28: Possible beaconing to 34.160.176.28: 7 connections ~every 3600s (jitter 0%)
+2026-07-28 08:22:52 [INFO] system/soar: Playbook 'Triage new incident' ran for 34.160.176.28 (4 steps)
+2026-07-28 08:22:52 [INFO] system/soar: Playbook 'Suspected C2' ran for 34.160.176.28 (4 steps)
+2026-07-28 09:13:31 [INFO] endpoint/104.29.135.75: 104.29.135.75 is a statistical outlier vs this network's baseline (score 0.977): number of ports unusually high (10.7σ); total volume unusually low (2.2σ); packet rate unusually high (1.8σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:31 [INFO] endpoint/142.251.186.94: 142.251.186.94 is a statistical outlier vs this network's baseline (score 0.966): number of ports unusually high (10.7σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:31 [INFO] endpoint/20.209.184.65: 20.209.184.65 is a statistical outlier vs this network's baseline (score 0.964): outbound/inbound ratio unusually high (5.8σ); packet count unusually high (2.0σ); total volume unusually high (2.0σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:31 [INFO] endpoint/74.179.77.164: 74.179.77.164 is a statistical outlier vs this network's baseline (score 0.961): outbound/inbound ratio unusually high (5.2σ); packet rate unusually high (2.0σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:31 [INFO] endpoint/172.66.46.237: 172.66.46.237 is a statistical outlier vs this network's baseline (score 0.94): packet rate unusually high (3.2σ); connection duration unusually low (1.6σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:31 [INFO] endpoint/104.18.32.47: 104.18.32.47 is a statistical outlier vs this network's baseline (score 0.903): packet count unusually high (3.1σ); total volume unusually high (2.8σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:31 [INFO] endpoint/23.219.87.71: 23.219.87.71 is a statistical outlier vs this network's baseline (score 0.889): total volume unusually high (1.9σ); packet count unusually high (1.9σ); packet rate unusually high (1.6σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:34 [INFO] endpoint/172.67.154.175: 172.67.154.175 is a statistical outlier vs this network's baseline (score 0.864): packet rate unusually high (2.5σ); connection duration unusually low (1.5σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:34 [INFO] endpoint/20.209.184.129: 20.209.184.129 is a statistical outlier vs this network's baseline (score 0.864): outbound/inbound ratio unusually high (3.7σ). A lead to investigate, not a verdict.
+2026-07-28 09:13:34 [INFO] endpoint/20.60.237.161: 20.60.237.161 is a statistical outlier vs this network's baseline (score 0.862): outbound/inbound ratio unusually high (3.2σ). A lead to investigate, not a verdict.
+2026-07-28 09:15:08 [ALERT] scan/192.168.1.6: Possible port scan: 192.168.1.6 -> 192.168.1.229 (25 ports in <= 60s)
+2026-07-28 09:15:35 [ALERT] scan/192.168.1.6: Possible port scan: 192.168.1.6 -> 192.168.1.225 (25 ports in <= 60s)
+2026-07-28 09:15:36 [WARNING] service/192.168.1.225: 192.168.1.225 exposes 515/printer (LPD) - Legacy print service, usually unauthenticated.

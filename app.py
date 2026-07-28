@@ -205,6 +205,14 @@ class _Tooltip:
             self._tip = None
 
 
+def _ip_sort_key(ip):
+    """Sort IPs numerically, so .9 precedes .10 instead of following it."""
+    try:
+        return tuple(int(p) for p in str(ip).split("."))
+    except Exception:
+        return (999, 999, 999, 999)
+
+
 class SentinelApp:
     def __init__(self, root):
         self.root = root
@@ -531,6 +539,63 @@ class SentinelApp:
         finally:
             menu.grab_release()
 
+    def _show_resolution_graph(self):
+        """Forward view: which lookups led to traffic, and which went nowhere.
+
+        The DNS log answers "what was resolved"; the per-IP chain answers "why
+        does this connection exist". This is the third question - across every
+        recent lookup, which ones actually produced a live flow. A name resolved
+        but never contacted is unremarkable on its own; a run of them from one
+        process is what domain-generation malware looks like while it hunts for
+        a live controller.
+        """
+        win = tk.Toplevel(self.root)
+        win.title("DNS resolution graph")
+        win.configure(bg=THEME_BG)
+        win.geometry("820x560")
+        tk.Label(win, text="RESOLUTION GRAPH   lookup -> address -> live?",
+                 bg=THEME_HEAD, fg=THEME_ACCENT, font=(FONT_HEAD, 13),
+                 anchor="w", padx=14, pady=9).pack(fill="x")
+        tk.Frame(win, bg=THEME_BORDER, height=1).pack(fill="x")
+        summary = tk.Label(win, text="", bg=THEME_BG, fg=THEME_MUTED,
+                           font=(FONT_UI, 9), anchor="w", padx=14, pady=6)
+        summary.pack(fill="x")
+        cols = ("name", "type", "ips", "live", "client")
+        tree = ttk.Treeview(win, columns=cols, show="headings")
+        for c, txt, w in (("name", "NAME", 280), ("type", "TYPE", 60),
+                          ("ips", "RESOLVED TO", 250), ("live", "LIVE FLOW", 80),
+                          ("client", "ASKED BY", 130)):
+            tree.heading(c, text=txt)
+            tree.column(c, width=w)
+        tree.tag_configure("live", foreground=THEME_GREEN)
+        tree.tag_configure("dead", foreground=THEME_MUTED)
+        tree.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        def refresh():
+            tree.delete(*tree.get_children())
+            try:
+                import dns_chain, dns_log as _dns
+                rows = dns_chain.resolution_graph(dns_log=_dns,
+                                                  flow_tracker=flow_tracker)
+            except Exception as exc:
+                summary.config(text=f"could not build graph: {exc}")
+                return
+            live_n = 0
+            for r in rows:
+                if r["live"]:
+                    live_n += 1
+                tree.insert("", "end", values=(
+                    r["name"] or "-", r["qtype"] or "-",
+                    ", ".join(r["ips"])[:44] or "(no answer)",
+                    "yes" if r["live"] else "-",
+                    r["client"] or "-"), tags=("live" if r["live"] else "dead",))
+            summary.config(text=f"{len(rows)} recent lookup(s), {live_n} with a "
+                                f"live flow. Resolved-but-never-contacted names "
+                                "in bulk are worth a look.")
+
+        ttk.Button(win, text="Refresh", command=refresh).pack(pady=(0, 10))
+        refresh()
+
     def _show_dns_chain(self, ip):
         """Show why a connection to this IP exists: the DNS lookup that led here."""
         try:
@@ -587,7 +652,8 @@ class SentinelApp:
                 import db_manager, dns_log as _dns, http_log as _http
                 import geo_lookup as _geo, threat_intel as _ti
                 tl = forensics.timeline(ip, db=db_manager, dns_log=_dns,
-                                        flow_tracker=flow_tracker, http_log=_http)
+                                        flow_tracker=flow_tracker, http_log=_http,
+                                        asset_registry=asset_registry)
                 prof = enrichment.profile(ip, geo_lookup=_geo, threat_intel=_ti,
                                           threat_detection=threat_detection, dns_log=_dns,
                                           flow_tracker=flow_tracker, correlation=correlation)
@@ -1492,35 +1558,89 @@ class SentinelApp:
         run()
 
     def _show_feedback(self):
-        """Show detection accuracy from analyst verdicts and tuning recommendations."""
+        """Show detection accuracy from analyst verdicts, and apply the tuning
+        it recommends without retyping thresholds by hand."""
         import db_manager
         win = tk.Toplevel(self.root)
         win.title("Detection feedback")
         win.configure(bg=THEME_BG)
-        win.geometry("680x520")
+        win.geometry("820x600")
         tk.Label(win, text="DETECTION FEEDBACK", bg=THEME_HEAD, fg=THEME_ACCENT,
                  font=(FONT_HEAD, 13), anchor="w", padx=14, pady=9).pack(fill="x")
         tk.Frame(win, bg=THEME_BORDER, height=1).pack(fill="x")
         body = scrolledtext.ScrolledText(win, bg=THEME_PANEL, fg=THEME_FG,
                                          font=(FONT_DATA, 10), wrap="word",
-                                         padx=12, pady=10, bd=0)
-        body.pack(fill="both", expand=True, padx=10, pady=10)
+                                         height=10, padx=12, pady=10, bd=0)
+        body.pack(fill="both", expand=True, padx=10, pady=(10, 6))
+
+        tk.Label(win, text="Recommendations - select one and apply the nudge:",
+                 bg=THEME_BG, fg=THEME_MUTED, font=(FONT_UI, 9),
+                 anchor="w", padx=14).pack(fill="x")
+        cols = ("dir", "category", "issue", "suggestion")
+        tree = ttk.Treeview(win, columns=cols, show="headings", height=7)
+        for c, txt, w in (("dir", "", 34), ("category", "CATEGORY", 90),
+                          ("issue", "WHAT THE DATA SHOWS", 300),
+                          ("suggestion", "RECOMMENDED", 330)):
+            tree.heading(c, text=txt)
+            tree.column(c, width=w)
+        tree.tag_configure("raise", foreground=THEME_AMBER)
+        tree.tag_configure("lower", foreground=THEME_ACCENT)
+        tree.pack(fill="both", expand=True, padx=10, pady=(0, 6))
+        recs_by_item = {}
 
         def refresh():
             body.config(state="normal")
             body.delete("1.0", "end")
             body.insert("1.0", "\n".join(feedback_loop.summary(db=db_manager)))
-            recs = feedback_loop.recommendations(db=db_manager, detection_rules=detection_rules)
-            if recs:
-                body.insert("end", "\n\nTUNING RECOMMENDATIONS:\n")
-                for r in recs:
-                    arrow = {"raise": "^", "lower": "v", None: "="}.get(r["direction"], "?")
-                    body.insert("end", f"  [{arrow}] {r['issue']}\n      {r['suggestion']}\n")
-                body.insert("end", "\nMark alerts as accurate/false (right-click an alert) "
-                                   "to build this up. Apply a nudge in Detection rules.")
+            off = detection_rules.disabled_categories()
+            if off:
+                body.insert("end", "\n\nCurrently disabled (generating nothing): "
+                                   + ", ".join(off))
             body.config(state="disabled")
+            tree.delete(*tree.get_children())
+            recs_by_item.clear()
+            for r in feedback_loop.recommendations(db=db_manager,
+                                                   detection_rules=detection_rules):
+                arrow = {"raise": "\u2191", "lower": "\u2193"}.get(r["direction"], "=")
+                item = tree.insert("", "end", values=(
+                    arrow, r["category"], r["issue"], r["suggestion"]),
+                    tags=(r["direction"] or "",))
+                recs_by_item[item] = r
 
-        ttk.Button(win, text="Refresh", command=refresh).pack(pady=(0, 8))
+        def apply_selected():
+            sel = tree.selection()
+            if not sel:
+                return
+            rec = recs_by_item.get(sel[0])
+            if not rec or not rec.get("direction"):
+                messagebox.showinfo("Detection feedback",
+                                    "That entry is an affirmation, not a change - "
+                                    "the rule is already well tuned.")
+                return
+            ok, old, new = feedback_loop.apply_recommendation(
+                rec, detection_rules=detection_rules)
+            if not ok:
+                messagebox.showwarning(
+                    "Detection feedback",
+                    "Could not apply: that category has no tunable threshold.")
+                return
+            events.log_event("INFO", "system", "tuning",
+                             f"{rec['category']} threshold {old} -> {new} "
+                             f"({rec['direction']}, from analyst feedback)")
+            messagebox.showinfo(
+                "Detection feedback",
+                f"{rec['category']}: threshold {old} -> {new}.\n\n"
+                "Applied to the running engine immediately. Export your config "
+                "if you want it to survive a restart.")
+            refresh()
+
+        bar = ttk.Frame(win)
+        bar.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(bar, text="Apply selected nudge",
+                   command=apply_selected).pack(side="left")
+        ttk.Button(bar, text="Refresh", command=refresh).pack(side="left", padx=(6, 0))
+        tk.Label(bar, text="Mark alerts accurate/false (right-click an alert) to build this up.",
+                 bg=THEME_BG, fg=THEME_MUTED, font=(FONT_UI, 8)).pack(side="right")
         refresh()
 
     def _record_feedback(self, verdict, category="", actor="", severity="", message=""):
@@ -1847,7 +1967,9 @@ class SentinelApp:
             return
         try:
             config_io.export_to_file(path, settings=settings,
-                                     detection_rules=detection_rules)
+                                     detection_rules=detection_rules,
+                                     allowlist=allowlist,
+                                     integrations=integrations)
             messagebox.showinfo("Export config", f"Configuration written to:\n{path}")
         except Exception as exc:
             messagebox.showerror("Export config", str(exc))
@@ -1859,7 +1981,9 @@ class SentinelApp:
             return
         try:
             result = config_io.import_from_file(path, settings=settings,
-                                                detection_rules=detection_rules)
+                                                detection_rules=detection_rules,
+                                                allowlist=allowlist,
+                                                integrations=integrations)
             messagebox.showinfo("Import config", "Applied:\n" + "\n".join(result))
         except Exception as exc:
             messagebox.showerror("Import config", str(exc))
@@ -1908,6 +2032,8 @@ class SentinelApp:
                    command=self._show_vuln_settings).pack(side="left", padx=(6, 0))
         ttk.Button(arow, text="Allowlist",
                    command=self._show_allowlist).pack(side="left", padx=(6, 0))
+        ttk.Button(arow, text="Asset inventory",
+                   command=self._show_inventory).pack(side="left", padx=(6, 0))
 
         # Capture interface picker (changing it restarts the sniffer).
         ifr = ttk.LabelFrame(wrap, text="Capture interface")
@@ -2423,6 +2549,74 @@ class SentinelApp:
                  bg=THEME_BG, fg=THEME_MUTED, font=(FONT_UI, 8)).pack(side="right")
         refresh()
 
+    def _show_inventory(self):
+        """The asset inventory: what every host on the network actually is."""
+        win = tk.Toplevel(self.root)
+        win.title("Asset inventory")
+        win.configure(bg=THEME_BG)
+        win.geometry("900x560")
+        tk.Label(win, text="ASSET INVENTORY", bg=THEME_HEAD, fg=THEME_ACCENT,
+                 font=(FONT_HEAD, 13), anchor="w", padx=14, pady=9).pack(fill="x")
+        tk.Frame(win, bg=THEME_BORDER, height=1).pack(fill="x")
+        summary = tk.Label(win, text="", bg=THEME_BG, fg=THEME_MUTED,
+                           font=(FONT_UI, 9), anchor="w", padx=14, pady=6)
+        summary.pack(fill="x")
+
+        cols = ("ip", "identity", "os_src", "services", "cves", "certs")
+        tree = ttk.Treeview(win, columns=cols, show="headings")
+        for c, txt, w in (("ip", "IP", 120), ("identity", "IDENTIFIED AS", 250),
+                          ("os_src", "EVIDENCE", 110), ("services", "SERVICES", 80),
+                          ("cves", "CVEs", 70), ("certs", "TLS ISSUES", 90)):
+            tree.heading(c, text=txt)
+            tree.column(c, width=w)
+        tree.tag_configure("risk", foreground=THEME_AMBER)
+        tree.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        detail = scrolledtext.ScrolledText(win, height=10, bg=THEME_PANEL,
+                                           fg=THEME_FG, font=(FONT_DATA, 10),
+                                           wrap="word", padx=12, pady=10, bd=0)
+        detail.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        rows = {}
+
+        def refresh():
+            tree.delete(*tree.get_children())
+            rows.clear()
+            for rec in sorted(asset_registry.assets(),
+                              key=lambda r: _ip_sort_key(r["ip"])):
+                risk = asset_registry.risk_summary(rec["ip"]) or {}
+                tag = "risk" if (risk.get("cves") or risk.get("cert_issues")) else ""
+                item = tree.insert("", "end", values=(
+                    rec["ip"],
+                    asset_registry.describe(rec["ip"]) or "-",
+                    rec["os"].get("source") or "-",
+                    len(rec.get("services") or {}),
+                    risk.get("cves", 0) or "-",
+                    risk.get("cert_issues", 0) or "-"), tags=(tag,))
+                rows[item] = rec["ip"]
+            st = asset_registry.stats()
+            summary.config(text=f"{st['assets']} asset(s), {st['identified']} "
+                                f"identified, {st['with_vulnerabilities']} with "
+                                "vulnerability data")
+
+        def on_select(_e):
+            sel = tree.selection()
+            if not sel:
+                return
+            ip = rows.get(sel[0])
+            detail.config(state="normal")
+            detail.delete("1.0", "end")
+            detail.insert("1.0", "\n".join(asset_registry.summarize(ip)))
+            detail.config(state="disabled")
+
+        tree.bind("<<TreeviewSelect>>", on_select)
+        bar = ttk.Frame(win)
+        bar.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(bar, text="Refresh", command=refresh).pack(side="left")
+        ttk.Button(bar, text="Enrich selected",
+                   command=lambda: self._enrich_ip(rows.get(
+                       tree.selection()[0])) if tree.selection() else None
+                   ).pack(side="left", padx=(6, 0))
+        refresh()
+
     def _register_infrastructure(self):
         """Exempt the default gateway from sweep/flood detection.
 
@@ -2813,6 +3007,8 @@ class SentinelApp:
         self.dns_summary = ttk.Label(top, text="no DNS traffic seen yet",
                                      font=(FONT_HEAD, 10))
         self.dns_summary.pack(side="left")
+        ttk.Button(top, text="Resolution graph",
+                   command=self._show_resolution_graph).pack(side="right")
 
         ttk.Label(top, text="filter:").pack(side="left", padx=(18, 4))
         self.dns_filter = tk.StringVar()
@@ -3297,11 +3493,12 @@ class SentinelApp:
         ttk.Button(top, text="Rebuild from history",
                    command=self._rebuild_incidents).pack(side="right", padx=6)
 
-        cols = ("level", "actor", "score", "pattern", "signals", "seen")
+        cols = ("level", "actor", "score", "pattern", "attck", "signals", "seen")
         self.incidents_tree = ttk.Treeview(self.incidents_tab, columns=cols, show="headings")
         for c, txt, w in (("level", "LEVEL", 96), ("actor", "ACTOR", 150),
-                          ("score", "SCORE", 68), ("pattern", "PATTERN", 300),
-                          ("signals", "SIGNALS", 210), ("seen", "LAST", 84)):
+                          ("score", "SCORE", 68), ("pattern", "PATTERN", 240),
+                          ("attck", "ATT&CK", 170),
+                          ("signals", "SIGNALS", 170), ("seen", "LAST", 84)):
             self.incidents_tree.heading(c, text=txt)
             self.incidents_tree.column(c, width=w)
         self.incidents_tree.tag_configure("CRITICAL", foreground=THEME_RED,
@@ -3375,6 +3572,7 @@ class SentinelApp:
             ttk.Button(ctrl, text=st.capitalize(),
                        command=lambda s=st: self._case_set_status(s)).pack(side="left", padx=2)
         ttk.Button(ctrl, text="Add note", command=self._case_add_note).pack(side="left", padx=(10, 0))
+        ttk.Button(ctrl, text="Assign", command=self._case_assign).pack(side="left", padx=(6, 0))
         ttk.Button(ctrl, text="Enrich actor", command=self._case_enrich).pack(side="left", padx=(6, 0))
         ttk.Button(ctrl, text="Generate report", command=self._case_report).pack(side="left", padx=(6, 0))
         ttk.Button(ctrl, text="SOC metrics", command=self._show_soc_metrics).pack(side="left", padx=(6, 0))
@@ -3454,6 +3652,25 @@ class SentinelApp:
             case_manager.add_note(self._selected_case, text, db=db_manager)
             self._render_case_detail(self._selected_case)
 
+    def _case_assign(self):
+        """Set the analyst who owns a case - the SOC metrics read this."""
+        import db_manager
+        if not self._selected_case:
+            return
+        from tkinter import simpledialog
+        case = db_manager.get_case(self._selected_case)
+        who = simpledialog.askstring(
+            "Assign case", "Assign to:",
+            initialvalue=(case or {}).get("assignee", "") or "")
+        if who is None:
+            return
+        case_manager.assign(self._selected_case, who.strip(), db=db_manager)
+        case_manager.add_note(self._selected_case,
+                              f"Assigned to {who.strip() or 'nobody'}.",
+                              db=db_manager)
+        self._render_case_detail(self._selected_case)
+        self._refresh_cases_now()
+
     def _case_enrich(self):
         import db_manager
         if not self._selected_case:
@@ -3495,6 +3712,13 @@ class SentinelApp:
                 notes = case_manager.notes(case)
                 actions = case_manager.actions(case)
                 metrics = soc_metrics.summary(db=db_manager)
+                # Asset context: what this host is, if we have ever identified it.
+                asset_lines = None
+                try:
+                    if asset_registry.get(case["actor"]):
+                        asset_lines = asset_registry.summarize(case["actor"])
+                except Exception:
+                    pass
                 enrich_lines = None
                 try:
                     import geo_lookup as _geo, threat_intel as _ti, dns_log as _dns
@@ -3507,7 +3731,8 @@ class SentinelApp:
                     pass
                 out = report_generator.generate_case_report(
                     case, path=path, techniques=techs, metrics=metrics,
-                    notes=notes, actions=actions, enrichment_lines=enrich_lines)
+                    notes=notes, actions=actions, enrichment_lines=enrich_lines,
+                    asset_lines=asset_lines)
                 events.log_event("INFO", "soar", "report",
                                  f"Case #{case['id']} report generated")
                 self.root.after(0, lambda: messagebox.showinfo(
@@ -3780,9 +4005,15 @@ class SentinelApp:
             signals = ", ".join(f"{c}x{n}" if n > 1 else c
                                 for c, n in sorted(i["categories"].items(),
                                                    key=lambda kv: -kv[1]))
+            try:
+                import mitre_attack as _mit
+                attck = _mit.summary_line(i).replace("ATT&CK: ", "")
+            except Exception:
+                attck = "-"
             item = self.incidents_tree.insert("", "end", values=(
                 i["level"], i["actor"], i["score"], i["pattern"] or "-",
-                signals[:40], _t.strftime("%H:%M:%S", _t.localtime(i["last"]))),
+                attck[:34],
+                signals[:34], _t.strftime("%H:%M:%S", _t.localtime(i["last"]))),
                 tags=(i["level"],))
             self._incident_rows[item] = i
         lv = stats["levels"]
@@ -3812,6 +4043,11 @@ class SentinelApp:
         try:
             import mitre_attack
             techs = mitre_attack.techniques_for_incident(i)
+            tactics = mitre_attack.tactics_for_incident(i)
+            if tactics:
+                # The tactic order is the attack's shape in ATT&CK's own terms -
+                # more legible at a glance than the raw technique list below.
+                lines.append("ATT&CK tactics:  " + " -> ".join(tactics))
             if techs:
                 lines.append("ATT&CK techniques:")
                 for t in techs:
@@ -4057,6 +4293,16 @@ class SentinelApp:
         if sig == self._net_sig:
             return
         self._net_sig = sig
+        # Push link-layer identity into the asset record. Without this the
+        # registry only ever learns about hosts that were port-scanned, so a
+        # discovered-but-unscanned device has no record at all.
+        for h in hosts:
+            try:
+                asset_registry.note_identity(
+                    h["ip"], mac=h.get("mac"), vendor=h.get("vendor"),
+                    hostname=h.get("hostname"), kind=h.get("kind"))
+            except Exception:
+                pass
         self.net_tree.delete(*self.net_tree.get_children())
         self._net_rows = {}
         now = _t.time()
@@ -5342,6 +5588,15 @@ class SentinelApp:
         ):
             try:
                 stop()
+            except Exception:
+                pass
+        # Persist anything that accumulates in memory between explicit saves.
+        # Each of these writes on change too, but a clean shutdown should not
+        # depend on the last mutation having happened to flush.
+        for save in (asset_registry.save, allowlist.save, watchlist.save,
+                     settings.save):
+            try:
+                save()
             except Exception:
                 pass
         self.root.destroy()
