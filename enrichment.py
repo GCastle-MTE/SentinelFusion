@@ -41,6 +41,23 @@ def profile(ip, *, geo_lookup=None, threat_intel=None, threat_detection=None,
         out["classification"] = _safe(threat_detection.classify_ip, ip) or ""
         out["hostname"] = _safe(threat_detection.host_for, ip) or ""
         out["os"] = _safe(threat_detection.get_host_os, ip)
+        # Cumulative totals for the whole session. The detectors work from these,
+        # while the flow table below only holds currently-live flows (idle ones
+        # are dropped after FLOW_TTL). Showing both means an analyst can
+        # reconcile a volume-based alert with what they're looking at, instead of
+        # seeing a "large transfer" alert next to a few KB of current traffic.
+        try:
+            rec = threat_detection.endpoint_stats.get(ip) or {}
+            if rec:
+                out["session"] = {
+                    "out_bytes": rec.get("out_bytes", 0),
+                    "in_bytes": rec.get("in_bytes", 0),
+                    "packets": rec.get("packets", 0),
+                    "first": rec.get("first"),
+                    "last": rec.get("last"),
+                }
+        except Exception:
+            pass
     if not out["hostname"] and dns_log is not None:
         out["hostname"] = _safe(dns_log.name_for_ip, ip) or ""
 
@@ -177,9 +194,19 @@ def summarize(p):
             lines.append(f"   {d['name']}  ({d['type']})")
         lines.append("")
 
+    sess = p.get("session")
+    if sess and (sess.get("out_bytes") or sess.get("in_bytes")):
+        lines.append("SESSION TOTALS  (cumulative - what the detectors measure)")
+        lines.append(f"   sent to this host:      {_fmt(sess['out_bytes'])}")
+        lines.append(f"   received from it:       {_fmt(sess['in_bytes'])}")
+        if sess.get("first") and sess.get("last"):
+            span = max(0.0, sess["last"] - sess["first"])
+            lines.append(f"   observed over:          {_duration(span)}")
+        lines.append("")
+
     t = p.get("totals", {})
     if t.get("flows"):
-        lines.append(f"TRAFFIC  ({t['flows']} flow(s))")
+        lines.append(f"LIVE FLOWS  ({t['flows']} currently active - idle flows age out)")
         lines.append(f"   sent by this host:  {_fmt(t['out_bytes'])}")
         lines.append(f"   received here:      {_fmt(t['in_bytes'])}")
         protos = {}
@@ -221,6 +248,15 @@ def summarize(p):
             lines.append("RESOLVED FROM")
             lines.append("   no DNS lookup seen (hard-coded IP / cached / IP-literal)")
     return lines
+
+
+def _duration(sec):
+    sec = int(sec or 0)
+    if sec < 60:
+        return f"{sec}s"
+    if sec < 3600:
+        return f"{sec // 60}m {sec % 60}s"
+    return f"{sec // 3600}h {(sec % 3600) // 60}m"
 
 
 def _fmt(n):

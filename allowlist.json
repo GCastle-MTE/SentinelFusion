@@ -1,0 +1,74 @@
+[
+  {
+    "kind": "ip",
+    "value": "192.168.1.253",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 2
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.244",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 2
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.246",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 0
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.247",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 1
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.241",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 1
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.226",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 0
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.3",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 0
+  },
+  {
+    "kind": "ip",
+    "value": "192.168.1.229",
+    "categories": [
+      "device"
+    ],
+    "note": "allowed from alert",
+    "hits": 0
+  }
+]

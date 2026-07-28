@@ -59,6 +59,10 @@ _DESCRIPTIVE = [
      "detail": "An application protocol on a non-standard port."},
     {"id": "intel_hit", "name": "Threat-intel match", "category": "intel",
      "detail": "Contact with an IP/domain on a threat-intelligence feed."},
+    {"id": "known_vuln", "name": "Known vulnerability (CVE)", "category": "vuln",
+     "detail": "A service version on one of your own devices matches a published "
+               "CVE. An asset/patching finding rather than an attack in progress, "
+               "so it maps to no ATT&CK technique."},
 ]
 
 # category -> enabled?  (default all on). Only categories present here can be

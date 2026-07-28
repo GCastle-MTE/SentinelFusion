@@ -233,7 +233,12 @@ def _check_protocol(ip, packet, rec=None):
     if not verdict:
         return
     severity, message = verdict
-    key = (ip, proto, result.get("port"))
+    # Dedupe on the connection, not on what we decided to call it. The
+    # classifier can label the same bytes "TLS" on one sample and
+    # "encrypted/compressed" on the next; keying on the protocol name let both
+    # through, so one odd connection produced two contradictory alerts. The
+    # finding is "this port on this host looks wrong", which is one observation.
+    key = (ip, result.get("port"))
     if key in _proto_alerted:
         return
     _proto_alerted.add(key)

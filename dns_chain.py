@@ -77,8 +77,15 @@ def chain_summary(chain):
         for n in chain["names"][1:4]:
             lines.append(f"   also: {n['name']} ({n['qtype']})")
     else:
-        lines.append(f"{ip} was contacted with no observed DNS lookup "
-                     "(hard-coded IP, cached resolution, or IP-literal).")
+        if _is_local(ip):
+            # A LAN address is reached directly, never through DNS. Calling that
+            # "hard-coded / IP-literal" implies something suspicious about a
+            # router or printer behaving entirely normally.
+            lines.append(f"{ip} is a local address - reached directly, so no "
+                         "DNS lookup is expected.")
+        else:
+            lines.append(f"{ip} was contacted with no observed DNS lookup "
+                         "(hard-coded IP, cached resolution, or IP-literal).")
     fl = chain.get("flows") or []
     if fl:
         lines.append(f"{len(fl)} active flow(s) to this address:")
@@ -128,3 +135,39 @@ def resolution_graph(*, dns_log=None, flow_tracker=None, max_age=1800, limit=200
         })
     rows.sort(key=lambda d: d["ts"] or 0, reverse=True)
     return rows
+
+
+_LOCAL_NETS = None
+
+
+def _is_local(ip):
+    """True for addresses reached directly rather than via public DNS.
+
+    Deliberately explicit instead of using ipaddress.is_private, which also
+    covers documentation ranges (192.0.2.0/24, 203.0.113.0/24 and friends).
+    Those are not addresses anyone reaches on a LAN, and quietly treating them
+    as local would suppress a genuine IP-literal finding if one ever appeared.
+    """
+    global _LOCAL_NETS
+    try:
+        import ipaddress
+        addr = ipaddress.ip_address(str(ip or ""))
+    except Exception:
+        return False
+    if (addr.is_loopback or addr.is_link_local or addr.is_multicast
+            or addr.is_unspecified):
+        return True
+    if _LOCAL_NETS is None:
+        import ipaddress as _ip
+        _LOCAL_NETS = [_ip.ip_network(n) for n in (
+            "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",   # RFC1918
+            "100.64.0.0/10",                                    # CGNAT
+            "fc00::/7",                                         # IPv6 ULA
+        )]
+    for net in _LOCAL_NETS:
+        try:
+            if addr in net:
+                return True
+        except TypeError:
+            continue        # v4 address against a v6 network
+    return False

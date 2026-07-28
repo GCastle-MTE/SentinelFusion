@@ -32,6 +32,11 @@ _last_arrival = {}
 MAX_GAPS = 50
 SYN_TIMEOUT = 10.0     # forget an unanswered SYN after this long
 
+# What counts as a continuous stream for jitter purposes. A media/game stream
+# ticks at least a few times a second; anything slower is conversational.
+STREAM_MAX_MEDIAN_GAP = 0.25     # seconds between packets, typical
+STREAM_MAX_SPREAD_RATIO = 3.0    # stdev beyond this x median = bursty, not jittery
+
 
 def note_syn(dst_ip, dst_port, ts=None):
     """Record an outbound TCP SYN so we can time its SYN-ACK."""
@@ -89,14 +94,37 @@ def rtt_for(ip):
 
 
 def jitter_for(ip):
-    """Jitter in ms (stdev of inter-arrival gaps), or None if not a steady stream."""
+    """Jitter in ms (stdev of inter-arrival gaps), or None.
+
+    Jitter is only meaningful for a *continuous* stream - voice, video, a game
+    tick. Conversational traffic (a chat app, a web page, anything request/
+    response over QUIC) sits idle between bursts, so the spread of its arrival
+    gaps is huge and says nothing about link quality. Reporting it anyway
+    produces nonsense like "jitter 1457ms" for a healthy connection.
+
+    So we require the stream to actually look continuous: a short median gap and
+    a spread that isn't wildly larger than that median. Anything burstier is
+    reported as None rather than as a bad link.
+    """
     with _lock:
         gaps = list(_gaps.get(ip, []))
-    if len(gaps) < 5:
+    if len(gaps) < 10:
         return None
+
+    ordered = sorted(gaps)
+    median = ordered[len(ordered) // 2]
+    # A real-time stream ticks many times a second; a median gap much longer
+    # than this is a conversation, not a stream.
+    if median > STREAM_MAX_MEDIAN_GAP:
+        return None
+
     mean = sum(gaps) / len(gaps)
     var = sum((g - mean) ** 2 for g in gaps) / len(gaps)
-    return round((var ** 0.5) * 1000.0, 1)
+    stdev = var ** 0.5
+    # Spread far larger than the typical gap means bursty, not jittery.
+    if stdev > median * STREAM_MAX_SPREAD_RATIO:
+        return None
+    return round(stdev * 1000.0, 1)
 
 
 def quality(ip):

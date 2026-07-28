@@ -64,35 +64,87 @@ TLS_PORTS = {443, 465, 636, 993, 995, 8443}
 _TLS_PORTS = TLS_PORTS
 
 
+def _read_head(sock, limit=2048, reads=4):
+    """Read an HTTP response head: up to the blank line, or `limit` bytes.
+
+    A single recv() returns whatever arrived in the first packet, which is often
+    only the status line and a header or two. Servers routinely put Server: last,
+    after Location/Connection/Date, so a one-shot short read misses it entirely.
+    Continuation reads use a tight timeout so a chatty host can't stall a scan.
+    """
+    buf = b""
+    for i in range(reads):
+        if i:
+            try:
+                sock.settimeout(0.25)
+            except Exception:
+                break
+        try:
+            part = sock.recv(min(1024, limit - len(buf)))
+        except Exception:
+            break
+        if not part:
+            break
+        buf += part
+        if b"\r\n\r\n" in buf or len(buf) >= limit:
+            break
+    return buf
+
+
 def _banner(sock, port):
     if port in _TLS_PORTS:
         return ""
     try:
         sock.settimeout(0.6)
         if port in _HTTPISH:
+            # HTTP/1.1 with a Host header: it is mandatory in 1.1 and plenty of
+            # embedded servers (cameras, routers, NAS boxes) simply ignore a bare
+            # 1.0 request, which reads as "silent service" when it is really a
+            # rejected request.
             try:
-                sock.sendall(b"HEAD / HTTP/1.0\r\n\r\n")
+                peer = sock.getpeername()[0]
+            except Exception:
+                peer = "localhost"
+            try:
+                sock.sendall(
+                    f"HEAD / HTTP/1.1\r\nHost: {peer}\r\n"
+                    "User-Agent: SentinelFusion/1.0 (network inventory)\r\n"
+                    "Accept: */*\r\nConnection: close\r\n\r\n".encode()
+                )
             except Exception:
                 return ""
-            data = sock.recv(240)
-        else:
-            # SSH, FTP, SMTP, telnet and the database engines all greet first -
-            # and plenty of them run on non-standard ports, so just listen
-            # rather than keying off the port number.
-            data = sock.recv(160)
+            text = _read_head(sock).decode("latin-1", "replace")
+            if text.startswith("HTTP/"):
+                # Extract Server: from the *full* head before any truncation.
+                # Doing this after flattening and capping to 90 chars silently
+                # dropped the header on any server that sends it late.
+                srv = _server_header(text)
+                if srv:
+                    return srv[:90]
+                # No Server: header - fall back to the status line, which at
+                # least records that something HTTP-shaped answered.
+                return " ".join(text.split("\n")[0].split())[:90]
+            return " ".join(text.split())[:90]
+        # SSH, FTP, SMTP, telnet and the database engines all greet first -
+        # and plenty of them run on non-standard ports, so just listen
+        # rather than keying off the port number.
+        data = sock.recv(160)
         text = data.decode("latin-1", "replace")
         return " ".join(text.split())[:90]
     except Exception:
         return ""
 
 
-def _server_header(banner):
-    # Pull just the Server: line out of an HTTP response, if present.
-    low = banner.lower()
-    idx = low.find("server:")
-    if idx < 0:
-        return ""
-    return banner[idx + 7:].split(" HTTP/")[0].strip()[:60]
+def _server_header(text):
+    """Return the Server: header value from a raw HTTP response head.
+
+    Parses line by line rather than searching a flattened string, so a value
+    containing the word "server" elsewhere can't confuse the match.
+    """
+    for line in text.split("\n"):
+        if line[:7].lower() == "server:":
+            return line.split(":", 1)[1].strip()[:80]
+    return ""
 
 
 def probe_port(ip, port, timeout=0.5, grab=True):
@@ -112,9 +164,8 @@ def probe_port(ip, port, timeout=0.5, grab=True):
                 sock.close()
             except Exception:
                 pass
-    if banner.startswith("HTTP/"):
-        srv = _server_header(banner)
-        banner = srv or banner.split("\r")[0][:60]
+    # _banner already resolves HTTP responses to the Server: value (or the
+    # status line if there isn't one), so nothing more to unpack here.
     return {
         "port": port,
         "service": COMMON_PORTS.get(port, ""),

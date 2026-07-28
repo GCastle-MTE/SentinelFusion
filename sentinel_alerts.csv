@@ -1,0 +1,7 @@
+time,severity,category,source,message,acknowledged
+2026-07-27 22:42:05,WARNING,device,169.254.5.181,New device appeared on the network (169.254.5.181),True
+2026-07-27 22:42:12,WARNING,device,192.168.1.253,New device appeared on the network (192.168.1.253),True
+2026-07-27 22:42:39,WARNING,device,192.168.1.244,New device appeared on the network (192.168.1.244),True
+2026-07-27 22:45:12,WARNING,protocol,192.71.166.37,"192.71.166.37: TLS found on port 22671, but it normally uses 443, 465, 563, 636. Either an unexpected service or something avoiding the usual port.",True
+2026-07-27 22:45:12,WARNING,protocol,192.71.166.37,"192.71.166.37: Traffic on port 22671 has no recognisable protocol and 7.24 bits/byte of entropy - it looks encrypted or compressed. On a port that should be plaintext, that suggests a tunnel or custom C2.",True
+2026-07-27 22:46:14,WARNING,device,192.168.1.241,New device appeared on the network (192.168.1.241),True

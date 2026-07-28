@@ -29,6 +29,16 @@ def log_event(severity, category, source, message):
             return None
     except Exception:
         pass
+    # Honour the allowlist: destinations the analyst has already judged benign
+    # stop raising the same finding. Scoped per category, and categories in
+    # allowlist.NEVER_SUPPRESS (threat-intel hits, cleartext credentials, known
+    # CVEs, certificate problems) always get through regardless.
+    try:
+        import allowlist
+        if allowlist.suppresses(str(category), ip=str(source)):
+            return None
+    except Exception:
+        pass
     stamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now))
     event = {
         "ts": now,
@@ -98,6 +108,8 @@ CATEGORY_INFO = {
     "endpoint": "Endpoint event.",
     "wifi": "Wireless (802.11) event - deauth flood, rogue AP, or evil twin detected in the air.",
     "soar": "SOAR automation - a playbook ran, or a case was opened/updated.",
+    "vuln": "Known vulnerability - a service version on a device you own matches "
+            "a published CVE. An asset/patching finding, not an attack in progress.",
     "system": "System / monitoring status.",
 }
 

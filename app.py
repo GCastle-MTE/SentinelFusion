@@ -31,6 +31,7 @@ import geo_lookup
 import process_lookup
 import network_discovery
 import lan_monitor
+import asset_registry
 import host_resolve
 import port_scanner
 import dhcp_monitor
@@ -47,6 +48,7 @@ import stream_follow
 import pcap_io
 import geoip_local
 import watchlist
+import allowlist
 import net_proxy
 import ja3_intel
 import cred_sniffer
@@ -64,6 +66,8 @@ import flow_analytics
 import correlation
 import playbook_engine
 import case_manager
+import cve_lookup
+import service_fingerprint
 import integrations
 import forensics
 import hunt_playbooks
@@ -215,8 +219,12 @@ class SentinelApp:
         # thresholds and the feed thread uses the saved refresh interval.
         settings.load()
         self.wigle_var.set(settings.get("wigle_token", ""))
+        cve_lookup.set_api_key(settings.get("nvd_api_key", ""))
+        self._register_infrastructure()
         self._apply_settings()
         watchlist.load()
+        allowlist.load()
+        asset_registry.load()
         self._watch_alerted = set()   # (ip, kind, value) already alerted this session
 
         # Desktop-notification state.
@@ -481,21 +489,43 @@ class SentinelApp:
                 self._popup_context_menu(event, ip)
         tree.bind("<Button-3>", handler)
 
-    def _popup_context_menu(self, event, ip):
+    def _popup_context_menu(self, event, ip, alert_meta=None):
+        """Shared right-click menu.
+
+        When `alert_meta` is supplied (from the Alerts tab) the detector-feedback
+        options are prepended. Both live in one menu because a Tk widget keeps
+        only the last <Button-3> binding - two separate menus silently cancel.
+        """
         menu = tk.Menu(self.root, tearoff=0, bg=THEME_PANEL, fg=THEME_FG,
                        activebackground=THEME_SEL, activeforeground=THEME_ACCENT,
                        bd=0)
-        menu.add_command(label=f"Inspect {ip}  (capture)", command=lambda: self._inspect_ip(ip))
-        menu.add_command(label="Endpoint detail", command=lambda: self._open_endpoint(ip))
-        menu.add_command(label="Enrich IP  (full profile)", command=lambda: self._enrich_ip(ip))
-        menu.add_command(label="DNS chain  (why this connection?)",
-                         command=lambda: self._show_dns_chain(ip))
-        menu.add_command(label="Export PCAP  (open in Wireshark)",
-                         command=lambda: self._export_ip_pcap(ip))
-        menu.add_command(label="Build evidence bundle  (forensics)",
-                         command=lambda: self._build_evidence(ip))
-        menu.add_separator()
-        menu.add_command(label="Copy IP", command=lambda: self._copy_text(ip))
+        if alert_meta:
+            sev, cat, src, msg, _key = alert_meta
+            menu.add_command(
+                label=f"Mark accurate  (true positive - {cat})",
+                command=lambda: self._record_feedback(
+                    feedback_loop.TRUE_POSITIVE, cat, src, sev, msg))
+            menu.add_command(
+                label=f"Mark false alarm  (false positive - {cat})",
+                command=lambda: self._record_feedback(
+                    feedback_loop.FALSE_POSITIVE, cat, src, sev, msg))
+            if ip and cat not in allowlist.NEVER_SUPPRESS:
+                menu.add_command(
+                    label=f"Allow {ip} for '{cat}' alerts  (stop repeating)",
+                    command=lambda: self._allow_destination(ip, cat))
+            menu.add_separator()
+        if ip:
+            menu.add_command(label=f"Inspect {ip}  (capture)", command=lambda: self._inspect_ip(ip))
+            menu.add_command(label="Endpoint detail", command=lambda: self._open_endpoint(ip))
+            menu.add_command(label="Enrich IP  (full profile)", command=lambda: self._enrich_ip(ip))
+            menu.add_command(label="DNS chain  (why this connection?)",
+                             command=lambda: self._show_dns_chain(ip))
+            menu.add_command(label="Export PCAP  (open in Wireshark)",
+                             command=lambda: self._export_ip_pcap(ip))
+            menu.add_command(label="Build evidence bundle  (forensics)",
+                             command=lambda: self._build_evidence(ip))
+            menu.add_separator()
+            menu.add_command(label="Copy IP", command=lambda: self._copy_text(ip))
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -1430,6 +1460,23 @@ class SentinelApp:
                 body.config(state="disabled")
                 return
             ranked = ml_anomaly.rank(eps, top=25)
+            # Emit the clear outliers so ML findings reach Alerts and correlation
+            # instead of dying in this window. Deliberately conservative: only
+            # flagged anomalies, only once per endpoint per session, and at
+            # INFO - the model produces leads, not verdicts, and a detector that
+            # fires on ~5% of endpoints every run would drown the alert stream.
+            for r in ranked:
+                if not r.get("anomaly") or not r.get("ip"):
+                    continue
+                if r["ip"] in self._ml_reported:
+                    continue
+                self._ml_reported.add(r["ip"])
+                reasons = "; ".join(r.get("reasons") or []) or "no single feature dominant"
+                events.log_event(
+                    "INFO", "endpoint", r["ip"],
+                    f"{r['ip']} is a statistical outlier vs this network's "
+                    f"baseline (score {r['score']}): {reasons}. A lead to "
+                    "investigate, not a verdict.")
             body.insert("end", f"Trained on {n} endpoints. Most anomalous first "
                                "(higher score = more unusual vs your baseline):\n\n")
             for r in ranked:
@@ -1603,6 +1650,68 @@ class SentinelApp:
         ttk.Button(brow, text="Test last", command=test).pack(side="left", padx=(6, 0))
         ttk.Button(brow, text="Clear all",
                    command=lambda: ([integrations.remove_target(n) for n in list(integrations.targets())], refresh())).pack(side="left", padx=(6, 0))
+        refresh()
+
+    def _show_vuln_settings(self):
+        """Configure the NVD data source: API key and result cache."""
+        win = tk.Toplevel(self.root)
+        win.title("Vulnerability data (NVD)")
+        win.configure(bg=THEME_BG)
+        win.geometry("620x400")
+        tk.Label(win, text="VULNERABILITY DATA SOURCE", bg=THEME_HEAD,
+                 fg=THEME_ACCENT, font=(FONT_HEAD, 13), anchor="w",
+                 padx=14, pady=9).pack(fill="x")
+        tk.Frame(win, bg=THEME_BORDER, height=1).pack(fill="x")
+        tk.Label(win, text="Service versions found on your devices are checked against "
+                           "NIST's National Vulnerability Database. NVD limits "
+                           "unauthenticated use to about 5 requests per 30 seconds; a "
+                           "free API key raises that to roughly 50, which makes "
+                           "scanning several hosts practical.",
+                 bg=THEME_BG, fg=THEME_MUTED, font=(FONT_UI, 9), wraplength=580,
+                 justify="left", anchor="w").pack(fill="x", padx=14, pady=8)
+
+        form = ttk.Frame(win)
+        form.pack(fill="x", padx=14, pady=4)
+        ttk.Label(form, text="NVD API key (optional):").pack(side="left")
+        key_var = tk.StringVar(value=settings.get("nvd_api_key", "") or "")
+        entry = ttk.Entry(form, textvariable=key_var, width=42, show="*")
+        entry.pack(side="left", padx=(6, 6))
+
+        info = scrolledtext.ScrolledText(win, bg=THEME_PANEL, fg=THEME_FG,
+                                         font=(FONT_DATA, 10), wrap="word",
+                                         height=8, padx=12, pady=10, bd=0)
+        info.pack(fill="both", expand=True, padx=10, pady=8)
+
+        def refresh():
+            st = cve_lookup.cache_stats()
+            info.config(state="normal")
+            info.delete("1.0", "end")
+            info.insert("1.0",
+                        f"API key: {'set' if cve_lookup.has_api_key() else 'not set'}\n"
+                        f"Request spacing: "
+                        f"{'~0.8s' if cve_lookup.has_api_key() else '~6.5s'} between lookups\n\n"
+                        f"Cached lookups: {st['entries']} ({st['fresh']} still fresh)\n"
+                        f"Cache lifetime: {cve_lookup.CACHE_TTL // 3600}h\n\n"
+                        "Results are cached so repeat scans of the same devices "
+                        "cost nothing. Clear the cache to force fresh lookups after "
+                        "patching.\n\n"
+                        "Get a free key at: https://nvd.nist.gov/developers/request-an-api-key")
+            info.config(state="disabled")
+
+        def save_key():
+            cve_lookup.set_api_key(key_var.get())
+            try:
+                settings.update({"nvd_api_key": key_var.get()})
+                settings.save()
+            except Exception:
+                pass
+            refresh()
+
+        row = ttk.Frame(win)
+        row.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(row, text="Save key", command=save_key).pack(side="left")
+        ttk.Button(row, text="Clear cache",
+                   command=lambda: (cve_lookup.clear_cache(), refresh())).pack(side="left", padx=(6, 0))
         refresh()
 
     def _show_health(self):
@@ -1795,6 +1904,10 @@ class SentinelApp:
                    command=self._show_log_sources).pack(side="left")
         ttk.Button(lrow, text="Integrations (webhooks)",
                    command=self._show_integrations).pack(side="left", padx=(6, 0))
+        ttk.Button(lrow, text="Vulnerability data (NVD)",
+                   command=self._show_vuln_settings).pack(side="left", padx=(6, 0))
+        ttk.Button(arow, text="Allowlist",
+                   command=self._show_allowlist).pack(side="left", padx=(6, 0))
 
         # Capture interface picker (changing it restarts the sniffer).
         ifr = ttk.LabelFrame(wrap, text="Capture interface")
@@ -2221,6 +2334,112 @@ class SentinelApp:
         self._update_ja3_status()
         self.settings_status.config(text=f"reset to defaults   config file: {settings.path()}")
 
+    def _allow_destination(self, ip, category):
+        """Allowlist one destination for one detection category, from an alert."""
+        hostname = ""
+        try:
+            hostname = threat_detection.host_for(ip) or ""
+        except Exception:
+            pass
+        note = f"allowed from alert{(' - ' + hostname) if hostname else ''}"
+        allowlist.add("ip", ip, categories=[category], note=note)
+        events.log_event("INFO", "system", "allowlist",
+                         f"{ip} allowlisted for '{category}' alerts")
+        try:
+            self.set_status(f"{ip} will no longer raise '{category}' alerts")
+        except Exception:
+            pass
+
+    def _show_allowlist(self):
+        """Manage known-good destinations."""
+        win = tk.Toplevel(self.root)
+        win.title("Allowlist")
+        win.configure(bg=THEME_BG)
+        win.geometry("780x540")
+        tk.Label(win, text="ALLOWLIST  -  known-good destinations", bg=THEME_HEAD,
+                 fg=THEME_ACCENT, font=(FONT_HEAD, 13), anchor="w",
+                 padx=14, pady=9).pack(fill="x")
+        tk.Frame(win, bg=THEME_BORDER, height=1).pack(fill="x")
+        tk.Label(win, text="Stops a destination you've already judged benign from "
+                           "raising the same finding forever. Suppression is scoped to "
+                           "the categories you name - allowing a backup host for 'exfil' "
+                           "won't hide beaconing to it. Threat-intel hits, cleartext "
+                           "credentials, CVEs and certificate problems are never "
+                           "suppressed, whatever you add here.",
+                 bg=THEME_BG, fg=THEME_MUTED, font=(FONT_UI, 9), wraplength=740,
+                 justify="left", anchor="w").pack(fill="x", padx=14, pady=8)
+
+        cols = ("kind", "value", "cats", "hits", "note")
+        tree = ttk.Treeview(win, columns=cols, show="headings", height=10)
+        for c, txt, w in (("kind", "KIND", 70), ("value", "VALUE", 190),
+                          ("cats", "CATEGORIES", 160), ("hits", "SUPPRESSED", 90),
+                          ("note", "NOTE", 220)):
+            tree.heading(c, text=txt)
+            tree.column(c, width=w)
+        tree.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+
+        form = ttk.Frame(win)
+        form.pack(fill="x", padx=10, pady=(0, 4))
+        kind_v = tk.StringVar(value="ip")
+        val_v = tk.StringVar()
+        cat_v = tk.StringVar()
+        ttk.Combobox(form, textvariable=kind_v, width=8, state="readonly",
+                     values=allowlist.KINDS).pack(side="left")
+        ttk.Entry(form, textvariable=val_v, width=24).pack(side="left", padx=4)
+        ttk.Label(form, text="categories (blank = all):").pack(side="left", padx=(6, 2))
+        ttk.Entry(form, textvariable=cat_v, width=22).pack(side="left")
+
+        def refresh():
+            tree.delete(*tree.get_children())
+            for r in allowlist.rules():
+                cats = ", ".join(r.get("categories") or []) or "all"
+                tree.insert("", "end", values=(r["kind"], r["value"], cats,
+                                               r.get("hits", 0), r.get("note", "")))
+
+        def add_entry():
+            ok, msg = allowlist.validate(kind_v.get(), val_v.get())
+            if not ok:
+                messagebox.showwarning("Allowlist", msg)
+                return
+            cats = [c.strip() for c in cat_v.get().split(",") if c.strip()]
+            allowlist.add(kind_v.get(), val_v.get(), categories=cats)
+            val_v.set(""); cat_v.set("")
+            refresh()
+
+        def remove_entry():
+            sel = tree.selection()
+            if not sel:
+                return
+            idx = tree.index(sel[0])
+            allowlist.remove(idx)
+            refresh()
+
+        row = ttk.Frame(win)
+        row.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(row, text="Add", command=add_entry).pack(side="left")
+        ttk.Button(row, text="Remove selected", command=remove_entry).pack(side="left", padx=(6, 0))
+        ttk.Button(row, text="Refresh", command=refresh).pack(side="left", padx=(6, 0))
+        tk.Label(row, text="Never suppressed: " + ", ".join(sorted(allowlist.NEVER_SUPPRESS)),
+                 bg=THEME_BG, fg=THEME_MUTED, font=(FONT_UI, 8)).pack(side="right")
+        refresh()
+
+    def _register_infrastructure(self):
+        """Exempt the default gateway from sweep/flood detection.
+
+        A router ARPs every address on the subnet and relays every host's
+        traffic, so it trips both detectors permanently. Excluding it by
+        identity is right; raising the thresholds until it goes quiet would
+        also hide a real sweep or flood.
+        """
+        try:
+            import network_discovery
+            gw = network_discovery.default_gateway()
+            if gw:
+                anomaly_detectors.set_infrastructure([gw])
+                print(f"gateway {gw} exempted from sweep/flood detection")
+        except Exception as exc:
+            print("could not identify gateway:", exc)
+
     def _apply_settings(self):
         # Push current settings into the live detector modules. Safe to call
         # before the UI exists (it only touches module-level constants).
@@ -2418,11 +2637,9 @@ class SentinelApp:
         self.alerts_tree.tag_configure("acked", foreground=THEME_MUTED)
         self.alerts_tree.bind("<Double-1>", self._on_alert_click)
         self.alerts_tree.bind("<<TreeviewSelect>>", self._on_alert_select)
-        self.alerts_tree.bind("<Button-3>", self._alert_feedback_menu)
-        self._bind_context(
-            self.alerts_tree,
-            lambda item: (self._alert_rows.get(item)
-                          if self._looks_like_ip(self._alert_rows.get(item, "")) else None))
+        # One binding only: Tk keeps just the last <Button-3> handler, so the
+        # feedback options and the IP actions share a single menu.
+        self.alerts_tree.bind("<Button-3>", self._alert_context_menu)
 
         # Explanation panel: plain-English meaning of the selected alert.
         exp = ttk.Frame(self.alerts_tab)
@@ -2558,30 +2775,23 @@ class SentinelApp:
             if self._looks_like_ip(src):
                 self._open_endpoint(src)
 
-    def _alert_feedback_menu(self, event):
-        """Right-click an alert to mark it a true/false positive (feedback loop)."""
+    def _alert_context_menu(self, event):
+        """Right-click an alert: rate the detection, and act on its source IP.
+
+        The feedback options appear for every alert - including ones whose source
+        isn't an address - because any detection can be judged accurate or false.
+        """
         row = self.alerts_tree.identify_row(event.y)
-        if row:
-            self.alerts_tree.selection_set(row)
-        meta = self._alert_meta.get(row)
-        if not meta:
+        if not row:
             return
-        sev, cat, src, msg, _key = meta
-        menu = tk.Menu(self.root, tearoff=0, bg=THEME_PANEL, fg=THEME_FG,
-                       activebackground=THEME_SEL, activeforeground=THEME_ACCENT, bd=0)
-        menu.add_command(label="Mark accurate  (true positive)",
-                         command=lambda: self._record_feedback(
-                             feedback_loop.TRUE_POSITIVE, cat, src, sev, msg))
-        menu.add_command(label="Mark false alarm  (false positive)",
-                         command=lambda: self._record_feedback(
-                             feedback_loop.FALSE_POSITIVE, cat, src, sev, msg))
-        menu.add_separator()
-        if self._looks_like_ip(src):
-            menu.add_command(label=f"Enrich {src}", command=lambda: self._enrich_ip(src))
-        try:
-            menu.tk_popup(event.x_root, event.y_root)
-        finally:
-            menu.grab_release()
+        self.alerts_tree.selection_set(row)
+        meta = self._alert_meta.get(row)
+        ip = self._alert_rows.get(row, "")
+        if not self._looks_like_ip(ip):
+            ip = ""
+        if not meta and not ip:
+            return
+        self._popup_context_menu(event, ip, alert_meta=meta)
 
     def _looks_like_ip(self, s):
         try:
@@ -3121,6 +3331,7 @@ class SentinelApp:
         self.incidents_tree.pack(fill="both", expand=True, padx=10, pady=10)
         self._incidents_sig = None
         self._playbooks_fired = set()
+        self._ml_reported = set()
         self._soar_enabled = True
         self.root.after(3000, self._refresh_incidents)
 
@@ -3795,12 +4006,15 @@ class SentinelApp:
         self.net_ports_btn = ttk.Button(top, text="Scan ports on selected",
                                         command=self._scan_host_ports)
         self.net_ports_btn.pack(side="right", padx=6)
+        self.net_vuln_btn = ttk.Button(top, text="Check vulnerabilities",
+                                       command=self._check_host_vulns)
+        self.net_vuln_btn.pack(side="right")
 
         cols = ("ip", "mac", "vendor", "host", "kind", "os", "ports", "seen")
         self.net_tree = ttk.Treeview(self.network_tab, columns=cols, show="headings")
         for c, txt, w in (("ip", "IP", 116), ("mac", "MAC", 130), ("vendor", "VENDOR", 130),
                           ("host", "HOSTNAME", 175), ("kind", "TYPE", 120),
-                          ("os", "OS (passive)", 130),
+                          ("os", "IDENTIFIED AS", 190),
                           ("ports", "OPEN PORTS", 120), ("seen", "SEEN", 58)):
             self.net_tree.heading(c, text=txt)
             self.net_tree.column(c, width=w)
@@ -3863,7 +4077,11 @@ class SentinelApp:
                 ports = "-"
             tags = ("self",) if h["is_self"] else (("risk",) if risky else ())
             os_fp = threat_detection.get_host_os(h["ip"])
-            os_txt = os_fp["os"] if os_fp else "-"
+            # Prefer what we positively identified (SMB build, product banner,
+            # TLS certificate) over the passive TCP-fingerprint guess. The
+            # passive answer is an inference; the asset record holds measurements.
+            os_txt = asset_registry.describe(h["ip"]) or (
+                os_fp["os"] if os_fp else "") or "-"
             item = self.net_tree.insert("", "end", values=(
                 h["ip"], h["mac"] or "-", h["vendor"] or "-", h["hostname"] or "-",
                 h["kind"] or "-", os_txt, ports, seen), tags=tags)
@@ -3934,6 +4152,120 @@ class SentinelApp:
 
         threading.Thread(target=work, daemon=True).start()
 
+    def _check_host_vulns(self):
+        """Identify service versions on a LAN device and check them against NVD.
+
+        Asset vulnerability management: what on my own network needs patching.
+        Runs off the UI thread because NVD lookups are deliberately rate-limited.
+        """
+        sel = self.net_tree.selection()
+        if not sel:
+            self.net_detail.config(text="Select a device first, then check vulnerabilities.")
+            return
+        ip = self._net_rows.get(sel[0])
+        if not ip:
+            return
+        findings = []
+        for h in lan_monitor.hosts():
+            if h.get("ip") == ip:
+                findings = h.get("findings") or []
+                break
+        if not findings:
+            messagebox.showinfo(
+                "Check vulnerabilities",
+                f"No port-scan results for {ip} yet.\n\n"
+                "Run 'Scan ports on selected' first - the version banners it "
+                "collects are what make a vulnerability check possible.")
+            return
+
+        # Identify once, persist to the asset record, and reuse the rows below -
+        # this used to run twice and discard the result both times.
+        rows = service_fingerprint.identify_findings(findings, ip=ip)
+        asset_registry.note_services(ip, rows)
+        asset_registry.save()
+        products = []
+        for row in rows:
+            products.extend(row["products"])
+        versioned = service_fingerprint.versioned(products)
+
+        win = tk.Toplevel(self.root)
+        win.title(f"Vulnerabilities - {ip}")
+        win.configure(bg=THEME_BG)
+        win.geometry("860x600")
+        tk.Label(win, text=f"VULNERABILITY ASSESSMENT   {ip}", bg=THEME_HEAD,
+                 fg=THEME_ACCENT, font=(FONT_HEAD, 13), anchor="w",
+                 padx=14, pady=9).pack(fill="x")
+        tk.Frame(win, bg=THEME_BORDER, height=1).pack(fill="x")
+        status = tk.Label(win, text="", bg=THEME_BG, fg=THEME_MUTED,
+                          font=(FONT_UI, 9), anchor="w", padx=14, pady=6)
+        status.pack(fill="x")
+        body = scrolledtext.ScrolledText(win, bg=THEME_PANEL, fg=THEME_FG,
+                                         font=(FONT_DATA, 10), wrap="word",
+                                         padx=12, pady=10, bd=0)
+        body.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        # Show what we identified immediately - that part needs no network.
+        body.insert("end", "IDENTIFIED SERVICES\n")
+        for row in rows:
+            for p in row["products"]:
+                mark = "*" if p["confidence"] == "high" else " "
+                ver = p["version"] or "version not disclosed"
+                body.insert("end", f" {mark} {row['port']}/tcp  {p['label']} {ver}\n")
+        body.insert("end", "\n")
+        if not versioned:
+            body.insert("end",
+                        "None of these services disclosed a version, so there is "
+                        "nothing to check against the CVE database. That is a "
+                        "normal result for SMB, RDP, printers and most IoT gear.\n")
+            status.config(text="Nothing to look up.")
+            return
+
+        est = len(versioned) * (1 if cve_lookup.has_api_key() else 7)
+        status.config(text=f"Looking up {len(versioned)} service version(s) against "
+                           f"NVD - roughly {est}s (rate-limited by NIST).")
+
+        def work():
+            try:
+                assessments = cve_lookup.assess_products(versioned)
+                asset_registry.note_vulnerabilities(ip, assessments)
+                asset_registry.save()
+                lines = cve_lookup.summarize(assessments)
+                roll = cve_lookup.risk_rollup(assessments)
+                # Surface serious findings into the event stream so they show up
+                # in Alerts/Logs alongside everything else.
+                for a in assessments:
+                    # Release-level OS matches are the release's whole history,
+                    # not this host's exposure - alerting on them would bury the
+                    # Alerts tab under a thousand already-patched findings.
+                    if a.get("precision") == "release":
+                        continue
+                    for c in (a.get("cves") or []):
+                        if (c.get("severity") in ("HIGH", "CRITICAL")
+                                and not c.get("suspect")):
+                            events.log_event(
+                                "WARNING", "vuln", ip,
+                                f"{ip} runs {a['product']} {a['version']} - "
+                                f"{c['id']} ({c['severity']} {c['score']})")
+            except Exception as exc:
+                lines = [f"Lookup failed: {exc}"]
+                roll = {}
+
+            def done():
+                body.insert("end", "KNOWN VULNERABILITIES\n")
+                body.insert("end", "\n".join(lines))
+                body.see("end")
+                if roll.get("total_cves"):
+                    status.config(
+                        text=f"{roll['total_cves']} CVE(s) - worst "
+                             f"{roll['worst_severity'].title()} "
+                             f"({roll['worst_score']}). Patch guidance only; "
+                             "verify against vendor advisories.")
+                else:
+                    status.config(text="No known CVEs matched the identified versions.")
+            self.root.after(0, done)
+
+        threading.Thread(target=work, daemon=True).start()
+
     def _scan_host_ports(self):
         sel = self.net_tree.selection()
         if not sel:
@@ -3949,6 +4281,18 @@ class SentinelApp:
             try:
                 findings = port_scanner.scan_host(ip, timeout=0.5)
                 lan_monitor.note_findings(ip, findings)
+                # Everything the scan learned goes onto the asset record, so the
+                # device inventory knows what a host *is*, not just that it exists.
+                try:
+                    rows = service_fingerprint.identify_findings(findings, ip=ip)
+                    asset_registry.note_services(ip, rows)
+                    for f in findings:
+                        if f.get("cert_issues"):
+                            asset_registry.note_cert_issues(ip, f["port"],
+                                                            f["cert_issues"])
+                    asset_registry.save()
+                except Exception as exc:
+                    print("asset record update failed:", exc)
                 for f in port_scanner.risky(findings):
                     events.log_event(
                         "WARNING", "service", ip,

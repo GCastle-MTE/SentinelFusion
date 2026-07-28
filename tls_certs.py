@@ -396,6 +396,23 @@ def analyze(cert, hostname=None, now=None):
         years = round((na - nb) / 31536000, 1)
         out.append(("INFO", "long validity",
                     f"Valid for {years} years - public CAs cap leaf certs near 1 year."))
+
+    # The negotiated cipher, when we have it. A certificate can be perfectly
+    # sound while the connection still offers no forward secrecy - a common
+    # combination on embedded video recorders and printers, and a real finding
+    # that certificate-only checks miss entirely.
+    cipher = (cert.get("cipher") or "").upper()
+    if cipher:
+        if not cipher.startswith(("ECDHE", "DHE", "TLS_")):
+            out.append(("WARNING", "no forward secrecy",
+                        f"{cert['cipher']} uses static key exchange - captured "
+                        "traffic can be decrypted later if the server key leaks."))
+        if "RC4" in cipher or "3DES" in cipher or "DES-" in cipher:
+            out.append(("ALERT", "obsolete cipher",
+                        f"{cert['cipher']} is broken or deprecated."))
+        elif "CBC" in cipher:
+            out.append(("INFO", "CBC cipher",
+                        f"{cert['cipher']} predates AEAD modes."))
     return out
 
 
@@ -441,6 +458,79 @@ def _is_ip(host):
     return len(parts) == 4 and all(p.isdigit() for p in parts)
 
 
+def _client_contexts():
+    """Contexts to try, strictest first.
+
+    The default context follows OpenSSL's security level, which on current builds
+    refuses TLS 1.0/1.1, RSA keys under 2048 bits and SHA-1 signatures. Embedded
+    devices - cameras, printers, older appliances - routinely ship exactly those,
+    so a strict-only client reports "handshake failed" for hosts that are working
+    fine and simply old.
+
+    The relaxed context is for *reading a certificate*, nothing else. No data is
+    sent over it and no trust is placed in it; the whole purpose is to inspect
+    certificates that would rightly fail validation. It must not be reused for
+    anything that carries traffic.
+    """
+    out = []
+    strict = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    strict.check_hostname = False
+    strict.verify_mode = ssl.CERT_NONE
+    out.append(("default", strict))
+
+    relaxed = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    relaxed.check_hostname = False
+    relaxed.verify_mode = ssl.CERT_NONE
+    try:
+        relaxed.minimum_version = ssl.TLSVersion.TLSv1
+    except Exception:
+        pass
+    try:
+        relaxed.set_ciphers("ALL:@SECLEVEL=0")
+    except Exception:
+        pass
+    for flag in ("OP_LEGACY_SERVER_CONNECT", "OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION"):
+        opt = getattr(ssl, flag, None)
+        if opt is not None:
+            try:
+                relaxed.options |= opt
+            except Exception:
+                pass
+    out.append(("legacy (TLS 1.0+, SECLEVEL=0)", relaxed))
+    return out
+
+
+def fetch_certificate_detail(host, port=443, timeout=3.0):
+    """Fetch a certificate and report how, or why not.
+
+    Returns {cert, mode, error}. `mode` names the context that succeeded, which
+    is itself a finding: a host that only answers the relaxed context is running
+    outdated TLS.
+    """
+    server_name = None if _is_ip(host) else host
+    last_error = ""
+    for label, ctx in _client_contexts():
+        try:
+            with socket.create_connection((host, port), timeout=timeout) as raw:
+                with ctx.wrap_socket(raw, server_hostname=server_name) as tls:
+                    der = tls.getpeercert(binary_form=True)
+                    if not der:
+                        last_error = "connected but no certificate offered"
+                        continue
+                    info = parse_certificate(der)
+                    if not info:
+                        last_error = "certificate returned but could not be parsed"
+                        continue
+                    info["tls_version"] = tls.version() or ""
+                    cipher = tls.cipher()
+                    info["cipher"] = cipher[0] if cipher else ""
+                    return {"cert": info, "mode": label, "error": None}
+        except Exception as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+            continue
+    return {"cert": None, "mode": "", "error": last_error or "handshake failed"}
+
+
 def fetch_certificate(host, port=443, timeout=3.0):
     """Connect and ask the server for its certificate.
 
@@ -448,21 +538,4 @@ def fetch_certificate(host, port=443, timeout=3.0):
     capture, which TLS 1.3 hides. Verification is deliberately off: the whole
     point is to inspect certificates that would fail validation.
     """
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    server_name = None if _is_ip(host) else host
-    try:
-        with socket.create_connection((host, port), timeout=timeout) as raw:
-            with ctx.wrap_socket(raw, server_hostname=server_name) as tls:
-                der = tls.getpeercert(binary_form=True)
-                if not der:
-                    return None
-                info = parse_certificate(der)
-                if info:
-                    info["tls_version"] = tls.version() or ""
-                    cipher = tls.cipher()
-                    info["cipher"] = cipher[0] if cipher else ""
-                return info or None
-    except Exception:
-        return None
+    return fetch_certificate_detail(host, port, timeout)["cert"]

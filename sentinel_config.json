@@ -8,7 +8,7 @@
   "intel_refresh_hours": 6,
   "geoip_dir": "",
   "ja3_file": "",
-  "capture_iface": "Wi-Fi",
+  "capture_iface": "",
   "proxy_enabled": 0,
   "notify_enabled": 1,
   "notify_warnings": 0,

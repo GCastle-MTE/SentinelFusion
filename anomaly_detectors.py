@@ -16,6 +16,26 @@ SWEEP_WINDOW = 60
 SYN_FLOOD_COUNT = 200     # SYNs to one target:port within the window
 FLOOD_WINDOW = 10
 
+# Hosts whose normal job looks exactly like an attack. A default gateway ARPs
+# and probes every address on the subnet (indistinguishable from a ping sweep)
+# and relays every host's traffic (indistinguishable from a flood), so leaving it
+# in guarantees permanent false positives. Excluding it is the correct fix -
+# raising the thresholds high enough to silence a router would also blind the
+# detectors to a genuine sweep or flood.
+#
+# Populated by the app at startup (network_discovery.default_gateway()); kept as
+# injected state rather than an import so this module stays cycle-free.
+INFRASTRUCTURE = set()
+
+
+def set_infrastructure(ips):
+    """Register hosts to exempt from sweep/flood detection (e.g. the gateway)."""
+    INFRASTRUCTURE.clear()
+    for ip in ips or []:
+        if ip:
+            INFRASTRUCTURE.add(str(ip))
+    return set(INFRASTRUCTURE)
+
 _lock = threading.Lock()
 
 # ICMP ping sweep: src -> {dst_ip: last_seen}
@@ -58,7 +78,8 @@ def _check_icmp_sweep(packet):
         cutoff = now - SWEEP_WINDOW
         for ip in [k for k, t in targets.items() if t < cutoff]:
             del targets[ip]
-        if len(targets) >= PING_SWEEP_HOSTS and src not in _swept:
+        if (len(targets) >= PING_SWEEP_HOSTS and src not in _swept
+                and src not in INFRASTRUCTURE):
             _swept.add(src)
             events.log_event(
                 "ALERT", "sweep", src,
@@ -81,7 +102,8 @@ def _check_syn_flood(packet):
         cutoff = now - FLOOD_WINDOW
         while times and times[0] < cutoff:
             times.pop(0)
-        if len(times) >= SYN_FLOOD_COUNT and key not in _flooded:
+        if (len(times) >= SYN_FLOOD_COUNT and key not in _flooded
+                and key[0] not in INFRASTRUCTURE):
             _flooded.add(key)
             events.log_event(
                 "ALERT", "flood", key[0],

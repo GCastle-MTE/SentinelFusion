@@ -262,13 +262,26 @@ def _rec(ip):
              "services": set(), "ports": set(), "first": now, "last": now,
              "active": False, "passive": False}
         _hosts[ip] = r
-        if _baseline_ready and ip != _self_ip:
+        # A 169.254.x address is APIPA/link-local: a host that failed to get a
+        # DHCP lease, or a virtual/VPN adapter announcing itself. It is not a new
+        # device joining the network, so alerting on it is a miscategorisation -
+        # it is recorded in the inventory but does not raise a device alert.
+        if _baseline_ready and ip != _self_ip and not _is_link_local(ip):
             try:
                 events.log_event("WARNING", "device", ip,
                                  f"New device appeared on the network ({ip})")
             except Exception:
                 pass
     return r
+
+
+def _is_link_local(ip):
+    """True for IPv4 APIPA (169.254.0.0/16) or IPv6 link-local (fe80::/10)."""
+    ip = str(ip or "")
+    if ip.startswith("169.254."):
+        return True
+    low = ip.lower()
+    return low.startswith("fe80:") or low.startswith("fe80::")
 
 
 def _looks_ipv4(ip):
